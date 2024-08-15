@@ -16,7 +16,7 @@ jobs:
         id: short-sha
 
       - name: Setup Rust
-        run: rustup toolchain install nightly-x86_64-pc-windows-gnu --profile minimal
+        run: rustup toolchain install nightly-x86_64-pc-windows-msvc --profile minimal
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -30,5 +30,5 @@ jobs:
         with:
           name: "swMod-${{ steps.short-sha.outputs.sha }}"
           path: |
-            target/x86_64-pc-windows-gnu/release/swmod-inject.exe
-            target/x86_64-pc-windows-gnu/release/swmod.dll
+            target/release/swmod-inject.exe
+            target/release/swmod.dll
