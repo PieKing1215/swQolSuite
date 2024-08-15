@@ -1,0 +1,32 @@
+name: Autobuild
+
+on:
+  push:
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: benjlevesque/short-sha@v3.0
+        id: short-sha
+      
+      - name: Setup Rust
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+          rustup toolchain install nightly-x86_64-pc-windows-msvc
+
+      - name: Build
+        run: cargo build --release --verbose
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: "swMod-${{ steps.short-sha.outputs.sha }}"
+          path: |
+            target/x86_64-pc-windows-msvc/release/swmod-inject.exe
+            target/x86_64-pc-windows-msvc/release/swmod.dll
