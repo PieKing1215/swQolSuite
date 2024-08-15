@@ -1,0 +1,21 @@
+[package]
+name = "swmod"
+version = "0.1.0"
+edition = "2021"
+build = "src/build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "swmod-inject"
+path = "src/main.rs"
+
+[profile.dev]
+opt-level = 1
+
+[dependencies]
+hudhook = { version = "0.7.1", default-features = false, features = ["opengl3", "inject"] }
+anyhow = "1.0.86"
+memory-rs = "0.2.6"
+atomic_float = "1.0.0"
