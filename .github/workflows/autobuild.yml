@@ -15,10 +15,9 @@ jobs:
       - uses: benjlevesque/short-sha@v3.0
         id: short-sha
 
-      # - name: Setup Rust
-      #   run: |
-      #     rustup target add x86_64-pc-windows-msvc
-      #     rustup toolchain install nightly-x86_64-pc-windows-msvc
+      - name: Setup
+        run: |
+          sudo apt-get install mingw-w64
 
       - name: Rustup show
         run: rustup show
