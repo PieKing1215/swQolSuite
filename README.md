@@ -11,6 +11,12 @@ If something goes wrong it will most likely crash your game, so please save your
 swMod may be flagged by antiviruses as a side effect of how it works. The way swMod injects into the game is similar to how some viruses hook other processes, and some antiviruses will detect this.
 Obviously I will say this repo (PieKing1215/swMod) and official builds do not actually contain malware to my knowledge, but if you want to be sure, look over the code and build from source.
 
+## Download
+For "stable" releases (there are none right now), see [Releases](../../releases).<br>
+For dev builds: sign in to GitHub, go [here](https://github.com/PieKing1215/swMod/actions/workflows/autobuild.yml?query=branch%3Amain+is%3Asuccess), click the latest one, scroll down to "Artifacts" and download it.<br>
+Or download the latest at https://nightly.link/PieKing1215/swMod/workflows/autobuild/main<br>
+Unzip and run swmod-inject.exe to run.
+
 ## Basic Usage
 Have Stormworks open and run the injector exe.<br>
 A couple menus should appear ingame:
@@ -39,12 +45,6 @@ If enabled, disables the check for a supporting surface when placing parts (eg. 
 
 ### Disable Merge Check
 If enabled, disables the check for a connecting surface when merging two subgrids (ie. lets you merge grids even if they're not connected)
-
-## Download
-For "stable" releases (there are none right now), see [Releases](../../releases).<br>
-For dev builds: sign in to GitHub, go [here](https://github.com/PieKing1215/swMod/actions/workflows/autobuild.yml?query=branch%3Amain+is%3Asuccess), click the latest one, scroll down to "Artifacts" and download it.<br>
-Or download the latest at https://nightly.link/PieKing1215/swMod/workflows/autobuild/main<br>
-Unzip and run swmod-inject.exe to run.
 
 ## Licenses
 
