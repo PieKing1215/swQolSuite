@@ -1,6 +1,10 @@
 [package]
 name = "swmod"
 version = "0.1.0"
+repository = "https://github.com/PieKing1215/swMod"
+authors = ["PieKing1215"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
 edition = "2021"
 build = "src/build.rs"
 
