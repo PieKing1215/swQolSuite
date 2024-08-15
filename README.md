@@ -1,5 +1,6 @@
 # swMod
-Mod for [Stormworks: Build and Rescue](https://store.steampowered.com/app/573090/Stormworks_Build_and_Rescue/) that adds some QOL settings.
+Mod for [Stormworks: Build and Rescue](https://store.steampowered.com/app/573090/Stormworks_Build_and_Rescue/) that adds some QOL settings.<br>
+Only supports 64 bit Windows version (stormworks64.exe). It might work through wine/proton, but untested.
 
 ![image](https://github.com/user-attachments/assets/d3c0978b-7897-4b04-9c6d-71e28dfbe1de)
 
