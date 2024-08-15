@@ -48,6 +48,7 @@ pub unsafe extern "stdcall" fn DllMain(
 }
 
 struct MainHud {
+    version_string: String,
     show: bool,
     tweaks: Vec<Box<dyn Tweak + Send + Sync>>,
     errors: Vec<anyhow::Error>,
@@ -56,6 +57,7 @@ struct MainHud {
 impl MainHud {
     fn new() -> Self {
         let mut this = Self {
+            version_string: format!("SWMod v{}{}", env!("CARGO_PKG_VERSION"), option_env!("SHA").map_or_else(|| "".to_string(), |sha| format!(" ({sha})"))),
             show: true,
             tweaks: vec![],
             errors: vec![],
@@ -124,7 +126,7 @@ impl ImguiRenderLoop for MainHud {
             .build(|| {
                 let text_color = ui.push_style_color(StyleColor::Text, [0.8, 0.8, 0.8, if self.show { 0.9 } else { 0.4 }]);
                 if self.show {
-                    ui.text(format!("SWMod v{} [~]", env!("CARGO_PKG_VERSION")));
+                    ui.text(format!("{} [~]", self.version_string));
                 } else {
                     ui.text("  [~]");
                 }
@@ -159,7 +161,7 @@ impl ImguiRenderLoop for MainHud {
             .resizable(false)
             .position([50., 50.], Condition::FirstUseEver)
             .build(|| {
-                ui.text(format!("SWMod v{}", env!("CARGO_PKG_VERSION")));
+                ui.text(&self.version_string);
                 if ui.button("Eject") {
                     self.uninit();
                 }
@@ -169,7 +171,7 @@ impl ImguiRenderLoop for MainHud {
             .no_nav()
             .always_auto_resize(true)
             .resizable(false)
-            .position([180., 50.], Condition::FirstUseEver)
+            .position([250., 50.], Condition::FirstUseEver)
             .build(|| {
                 if ui.button("Reset to Default") {
                     for tw in &mut self.tweaks {
@@ -194,7 +196,7 @@ impl ImguiRenderLoop for MainHud {
             ui.window("Errors")
                 .no_nav()
                 .size([300., 200.], Condition::FirstUseEver)
-                .position([50., 50.], Condition::FirstUseEver)
+                .position([50., 250.], Condition::FirstUseEver)
                 .build(|| {
                     for err in &self.errors {
                         ui.text(format!("{err:?}"));
