@@ -14,11 +14,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: benjlevesque/short-sha@v3.0
         id: short-sha
-      
-      - name: Setup Rust
-        run: |
-          rustup target add x86_64-pc-windows-msvc
-          rustup toolchain install nightly-x86_64-pc-windows-msvc
+
+      # - name: Setup Rust
+      #   run: |
+      #     rustup target add x86_64-pc-windows-msvc
+      #     rustup toolchain install nightly-x86_64-pc-windows-msvc
 
       - name: Build
         run: cargo build --release --verbose
@@ -28,5 +28,5 @@ jobs:
         with:
           name: "swMod-${{ steps.short-sha.outputs.sha }}"
           path: |
-            target/x86_64-pc-windows-msvc/release/swmod-inject.exe
-            target/x86_64-pc-windows-msvc/release/swmod.dll
+            target/release/swmod-inject.exe
+            target/release/swmod.dll
