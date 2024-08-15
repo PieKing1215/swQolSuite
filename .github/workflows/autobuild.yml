@@ -20,6 +20,9 @@ jobs:
       #     rustup target add x86_64-pc-windows-msvc
       #     rustup toolchain install nightly-x86_64-pc-windows-msvc
 
+      - name: Rustup show
+        run: rustup show
+      
       - name: Build
         run: cargo build --release --verbose
 
