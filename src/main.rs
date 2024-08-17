@@ -1,13 +1,13 @@
 use hudhook::inject::Process;
 
 fn main() {
-    println!("SWMod Injector");
+    println!("swQolSuite Injector");
 
     // basically if running using cargo, look in the right target/ folder for it
-    // otherwise if there's a swmod.dll in the working directory, use it.
+    // otherwise if there's a swqols.dll in the working directory, use it.
     let mut cur_exe = std::env::current_exe().unwrap();
     cur_exe.push("..");
-    cur_exe.push("swmod.dll");
+    cur_exe.push("swqols.dll");
 
     let dll_path = cur_exe.canonicalize().unwrap();
 

@@ -58,7 +58,7 @@ struct MainHud {
 impl MainHud {
     fn new() -> Self {
         let mut this = Self {
-            version_string: format!("SWMod v{}{}", env!("CARGO_PKG_VERSION"), option_env!("SHA").map_or_else(|| "".to_string(), |sha| format!(" ({sha})"))),
+            version_string: format!("swQolSuite v{}{}", env!("CARGO_PKG_VERSION"), option_env!("SHA").map_or_else(|| "".to_string(), |sha| format!(" ({sha})"))),
             show: true,
             tweaks: vec![],
             errors: vec![],
@@ -157,7 +157,7 @@ impl ImguiRenderLoop for MainHud {
         //     .build(|| {});
         // bg_color.end();
 
-        ui.window("SWMod")
+        ui.window("swQolSuite")
             .no_nav()
             .always_auto_resize(true)
             .resizable(false)

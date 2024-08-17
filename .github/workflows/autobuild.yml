@@ -25,7 +25,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: "swMod-${{ steps.short-sha.outputs.sha }}"
+          name: "swQolSuite-${{ steps.short-sha.outputs.sha }}"
           path: |
-            target/x86_64-pc-windows-msvc/release/swmod-inject.exe
-            target/x86_64-pc-windows-msvc/release/swmod.dll
+            target/x86_64-pc-windows-msvc/release/swqols-inject.exe
+            target/x86_64-pc-windows-msvc/release/swqols.dll
