@@ -2,7 +2,7 @@
 Mod for [Stormworks: Build and Rescue](https://store.steampowered.com/app/573090/Stormworks_Build_and_Rescue/) that adds some QOL settings.<br>
 Only supports 64 bit Windows version (stormworks64.exe). It might work through wine/proton, but untested.
 
-![image](https://github.com/user-attachments/assets/d3c0978b-7897-4b04-9c6d-71e28dfbe1de)
+![image](https://github.com/user-attachments/assets/52329669-8bc5-4dce-a0b9-e4526c37d3b8)
 
 ## READ THIS FIRST
 The mod uses low level techniques (mainly ASM injection) to patch the game since there's no other way to do it.<br>
@@ -46,6 +46,14 @@ If enabled, disables the check for a supporting surface when placing parts (eg. 
 
 ### Disable Merge Check
 If enabled, disables the check for a connecting surface when merging two subgrids (ie. lets you merge grids even if they're not connected)
+
+### Fast Main Menu Fade
+Speeds up the main menu fade out/in when loading a save or returning to main menu (speeds up loading since it waits for the transition to end before starting)
+
+### Skip Loading Finish Animation
+Normally when loading into or exiting a world, once the loading finishes, the progress bar animates from its current percentage to 100%.<br>
+The animation is purely visual but it waits for it before spawning you in.<br>
+This tweak skips the animation so you start spawning immediately once ready.
 
 ## Licenses
 
