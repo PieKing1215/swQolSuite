@@ -5,12 +5,15 @@ Only supports 64 bit Windows version (stormworks64.exe). It might work through w
 ![image](https://github.com/user-attachments/assets/52329669-8bc5-4dce-a0b9-e4526c37d3b8)
 
 ## READ THIS FIRST
-The mod uses low level techniques (mainly ASM injection) to patch the game since there's no other way to do it.<br>
+swQolSuite uses low level techniques (mainly ASM injection) to patch the game since there's no other way to do it.<br>
 Due to the nature of these methods, I won't make any guarantees about stability.<br>
-If something goes wrong it will most likely crash your game, so please save your work often (especially before injecting or ejecting the mod)<br>
+**If something goes wrong it will most likely crash your game, so please save your work often.**<br>
+Injecting or ejecting the mod are the most likely to crash, but it might also be possible when changing settings while in use (eg. changing editor settings while in editor)<br>
 
 swQolSuite may be flagged by antiviruses as a side effect of how it works. The way swQolSuite injects into the game is similar to how some viruses hook other processes, and some antiviruses will detect this.
 Obviously I will say this repo (PieKing1215/swQolSuite) and official builds do not actually contain malware to my knowledge, but if you want to be sure, look over the code and build from source.
+
+swQolSuite is not a cheating/griefing tool, please do not request features that give you an advantage over other players in multiplayer.
 
 ## Download
 For "stable" releases (there are none right now), see [Releases](../../releases).<br>
