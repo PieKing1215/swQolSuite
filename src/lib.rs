@@ -7,6 +7,7 @@ use imgui::*;
 use memory_rs::internal::process_info::ProcessInfo;
 use tweaks::editor_camera_speed::EditorCameraSpeedTweak;
 use tweaks::editor_placement::EditorPlacementTweak;
+use tweaks::editor_show_hidden::ShowHiddenComponents;
 use tweaks::loading::LoadingTweak;
 use tweaks::map_lag::MapLagTweak;
 use tweaks::Tweak;
@@ -70,6 +71,7 @@ impl MainHud {
                 this.add_tweak(EditorCameraSpeedTweak::new(&process.region));
                 this.add_tweak(EditorPlacementTweak::new(&process.region));
                 this.add_tweak(LoadingTweak::new(&process.region));
+                this.add_tweak(ShowHiddenComponents::new(&process.region));
             },
             Err(err) => this.errors.push(err),
         }

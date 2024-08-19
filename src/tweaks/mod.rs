@@ -5,6 +5,7 @@ pub mod map_lag;
 pub mod editor_camera_speed;
 pub mod editor_placement;
 pub mod loading;
+pub mod editor_show_hidden;
 
 pub trait Tweak {
     fn uninit(&mut self) -> anyhow::Result<()>;
