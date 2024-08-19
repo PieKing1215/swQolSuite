@@ -12,6 +12,8 @@ fn main() {
     let dll_path = cur_exe.canonicalize().unwrap();
 
     println!("Injecting DLL @ {dll_path:?}");
-    Process::by_name("stormworks64.exe").expect("Failed to find stormworks64.exe")
-        .inject(dll_path).expect("Failed to inject DLL");
+    Process::by_name("stormworks64.exe")
+        .expect("Failed to find stormworks64.exe")
+        .inject(dll_path)
+        .expect("Failed to inject DLL");
 }

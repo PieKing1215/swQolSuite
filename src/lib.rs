@@ -16,11 +16,7 @@ use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 
 #[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub unsafe extern "stdcall" fn DllMain(
-    hmodule: HINSTANCE,
-    reason: u32,
-    _: *mut std::ffi::c_void,
-) {
+pub unsafe extern "stdcall" fn DllMain(hmodule: HINSTANCE, reason: u32, _: *mut std::ffi::c_void) {
     if reason == DLL_PROCESS_ATTACH {
         trace!("DllMain()");
         std::thread::spawn(move || {
@@ -59,7 +55,11 @@ struct MainHud {
 impl MainHud {
     fn new() -> Self {
         let mut this = Self {
-            version_string: format!("swQolSuite v{}{}", env!("CARGO_PKG_VERSION"), option_env!("SHA").map_or_else(|| "".to_string(), |sha| format!(" ({sha})"))),
+            version_string: format!(
+                "swQolSuite v{}{}",
+                env!("CARGO_PKG_VERSION"),
+                option_env!("SHA").map_or_else(|| "".to_string(), |sha| format!(" ({sha})"))
+            ),
             show: true,
             tweaks: vec![],
             errors: vec![],
@@ -79,7 +79,7 @@ impl MainHud {
         this
     }
 
-    fn add_tweak<T: Tweak + Send + Sync + 'static>(&mut self, tw: anyhow::Result<T>){
+    fn add_tweak<T: Tweak + Send + Sync + 'static>(&mut self, tw: anyhow::Result<T>) {
         match tw {
             Ok(tw) => self.tweaks.push(Box::new(tw)),
             Err(e) => self.errors.push(e),
@@ -128,7 +128,10 @@ impl ImguiRenderLoop for MainHud {
             .position_pivot([1., 1.])
             .position(ui.io().display_size, Condition::Always)
             .build(|| {
-                let text_color = ui.push_style_color(StyleColor::Text, [0.8, 0.8, 0.8, if self.show { 0.9 } else { 0.4 }]);
+                let text_color = ui.push_style_color(
+                    StyleColor::Text,
+                    [0.8, 0.8, 0.8, if self.show { 0.9 } else { 0.4 }],
+                );
                 if self.show {
                     ui.text(format!("{} [~]", self.version_string));
                 } else {

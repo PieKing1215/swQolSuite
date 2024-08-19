@@ -1,7 +1,13 @@
 use std::arch::asm;
 
 use anyhow::{anyhow, Context};
-use memory_rs::{generate_aob_pattern, internal::{injections::{Inject, Injection}, memory_region::MemoryRegion}};
+use memory_rs::{
+    generate_aob_pattern,
+    internal::{
+        injections::{Inject, Injection},
+        memory_region::MemoryRegion,
+    },
+};
 
 use super::{MemoryRegionExt, Tweak};
 
@@ -27,13 +33,14 @@ impl LoadingTweak {
         // menu_state.fade_cur++;
         // ```
         let memory_pattern = generate_aob_pattern![
-            0x49, 0x8B, 0xD4,                         // MOV    RDX,R12
-            0xff, 0x90, 0xf0, 0x00, 0x00, 0x00,       // CALL   qword ptr [RAX + 0xf0]
-            0x41, 0xff, 0x86, 0x80, 0xdb, 0x0b, 0x00  // INC    dword ptr [R14 + 0xbdb80]
+            0x49, 0x8B, 0xD4, // MOV    RDX,R12
+            0xff, 0x90, 0xf0, 0x00, 0x00, 0x00, // CALL   qword ptr [RAX + 0xf0]
+            0x41, 0xff, 0x86, 0x80, 0xdb, 0x0b, 0x00 // INC    dword ptr [R14 + 0xbdb80]
         ];
 
         let menu_fade_addr = {
-            region.scan_aob_single(&memory_pattern)
+            region
+                .scan_aob_single(&memory_pattern)
                 .context(anyhow!("Error finding menu fade addr"))?
         };
 
@@ -53,17 +60,21 @@ impl LoadingTweak {
 
         // `&& (visual_progress == 1.0)`
         let memory_pattern = generate_aob_pattern![
-            0x0f, 0x2e, 0xc6,    // UCOMISS    XMM0,XMM6
-            0x7a, 0x41,          // JP         +41
-            0x75, 0x3f           // JNZ        +3f
+            0x0f, 0x2e, 0xc6, // UCOMISS    XMM0,XMM6
+            0x7a, 0x41, // JP         +41
+            0x75, 0x3f // JNZ        +3f
         ];
 
         let skip_load_finish_addr = {
-            region.scan_aob_single(&memory_pattern)
+            region
+                .scan_aob_single(&memory_pattern)
                 .context(anyhow!("Error finding skip load finish addr"))?
         };
 
-        let mut skip_load_finish_injection = Injection::new(skip_load_finish_addr + memory_pattern.size - 2, vec![0x90, 0x90]);
+        let mut skip_load_finish_injection = Injection::new(
+            skip_load_finish_addr + memory_pattern.size - 2,
+            vec![0x90, 0x90],
+        );
 
         if DEFAULT_SKIP_LOAD_FINISH {
             skip_load_finish_injection.inject();
@@ -102,7 +113,7 @@ impl Tweak for LoadingTweak {
     fn uninit(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
-    
+
     fn render(&mut self, ui: &hudhook::imgui::Ui) {
         if ui.checkbox("Fast Main Menu Fade", &mut self.fast_menu_fade) {
             self.set_fast_menu_fade(self.fast_menu_fade);
@@ -118,12 +129,12 @@ impl Tweak for LoadingTweak {
             ui.tooltip_text(format!("Skips the animation of the progress bar going to 100%\n(default: {DEFAULT_SKIP_LOAD_FINISH}, vanilla: {VANILLA_SKIP_LOAD_FINISH})"));
         }
     }
-    
+
     fn reset_to_default(&mut self) {
         self.set_fast_menu_fade(DEFAULT_FAST_MENU_FADE);
         self.set_skip_load_finish(DEFAULT_SKIP_LOAD_FINISH);
     }
-    
+
     fn reset_to_vanilla(&mut self) {
         self.set_fast_menu_fade(VANILLA_FAST_MENU_FADE);
         self.set_skip_load_finish(VANILLA_SKIP_LOAD_FINISH);
@@ -134,8 +145,8 @@ impl Tweak for LoadingTweak {
 extern "stdcall" fn custom_fade() {
     unsafe {
         asm!(
-            "mov rdx,r12",       // original code
-            "call [rax + 0xf0]", // original code
+            "mov rdx,r12",                      // original code
+            "call [rax + 0xf0]",                // original code
             "add dword ptr [r14 + 0xbdb80],15", // inc by 15 instead of 1
             options(nostack),
         );

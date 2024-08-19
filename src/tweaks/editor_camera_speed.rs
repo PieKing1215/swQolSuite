@@ -3,7 +3,13 @@ use std::{arch::asm, sync::atomic::Ordering};
 use anyhow::Context;
 use atomic_float::AtomicF32;
 use hudhook::imgui::TreeNodeFlags;
-use memory_rs::{generate_aob_pattern, internal::{injections::{Inject, Injection}, memory_region::MemoryRegion}};
+use memory_rs::{
+    generate_aob_pattern,
+    internal::{
+        injections::{Inject, Injection},
+        memory_region::MemoryRegion,
+    },
+};
 
 use super::{MemoryRegionExt, Tweak};
 
@@ -21,7 +27,8 @@ const DEFAULT_WHEEL_MULTIPLIER: f32 = 1.1;
 
 static SPEED: AtomicF32 = AtomicF32::new(1.0);
 
-#[no_mangle] static mut jmp_back_addr: usize = 0x0;
+#[no_mangle]
+static mut jmp_back_addr: usize = 0x0;
 
 pub struct EditorCameraSpeedTweak {
     base_speed: f32,
@@ -38,14 +45,18 @@ impl EditorCameraSpeedTweak {
     pub fn new(region: &MemoryRegion) -> anyhow::Result<Self> {
         // `xmm5 = param_1->shift_down ? 0.2 : 1.0`
         let memory_pattern = generate_aob_pattern![
-            0x80, 0xb9, 0x1a, 0x0e, 0x00, 0x00, 0x00, // CMP      byte ptr [RCX + param_1->shift_down],0x0
-            0x74, 0x0a,                               // JZ       +0xA
-            0xf3, 0x0f, 0x10, 0x2d, _, _, _, _,       // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 0.2
-            0xeb, 0x08,                               // JMP      +0x8
-            0xf3, 0x0f, 0x10, 0x2d, _, _, _, _        // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 1.0
+            0x80, 0xb9, 0x1a, 0x0e, 0x00, 0x00,
+            0x00, // CMP      byte ptr [RCX + param_1->shift_down],0x0
+            0x74, 0x0a, // JZ       +0xA
+            0xf3, 0x0f, 0x10, 0x2d, _, _, _,
+            _, // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 0.2
+            0xeb, 0x08, // JMP      +0x8
+            0xf3, 0x0f, 0x10, 0x2d, _, _, _,
+            _ // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 1.0
         ];
         let speed_addr = {
-            region.scan_aob_single(&memory_pattern)
+            region
+                .scan_aob_single(&memory_pattern)
                 .context("Error finding editor camera speed addr")?
         };
 
@@ -63,7 +74,7 @@ impl EditorCameraSpeedTweak {
             shift_multiplier: DEFAULT_SHIFT_MULTIPLIER,
             control_multiplier: DEFAULT_CONTROL_MULTIPLIER,
             wheel_multiplier: DEFAULT_WHEEL_MULTIPLIER,
-        
+
             current_wheel_multiplier: 1.0,
             current_speed: DEFAULT_BASE_SPEED,
             _speed_inject: speed_inject,
@@ -81,13 +92,17 @@ impl Tweak for EditorCameraSpeedTweak {
             ui.set_next_item_width(100.0);
             ui.slider("Base Speed", 0.1, 4.0, &mut self.base_speed);
             if ui.is_item_hovered() {
-                ui.tooltip_text(format!("(default: {DEFAULT_BASE_SPEED}, vanilla: {VANILLA_BASE_SPEED})"));
+                ui.tooltip_text(format!(
+                    "(default: {DEFAULT_BASE_SPEED}, vanilla: {VANILLA_BASE_SPEED})"
+                ));
             }
 
             ui.set_next_item_width(100.0);
             ui.slider("Shift Multiplier", 0.1, 4.0, &mut self.shift_multiplier);
             if ui.is_item_hovered() {
-                ui.tooltip_text(format!("(default: {DEFAULT_SHIFT_MULTIPLIER}, vanilla: {VANILLA_SHIFT_MULTIPLIER})"));
+                ui.tooltip_text(format!(
+                    "(default: {DEFAULT_SHIFT_MULTIPLIER}, vanilla: {VANILLA_SHIFT_MULTIPLIER})"
+                ));
             }
 
             ui.set_next_item_width(100.0);
@@ -101,7 +116,7 @@ impl Tweak for EditorCameraSpeedTweak {
             // if ui.is_item_hovered() {
             //     ui.tooltip_text(format!("(default: {DEFAULT_WHEEL_MULTIPLIER}, vanilla: {VANILLA_WHEEL_MULTIPLIER})"));
             // }
-    
+
             // ui.text(format!("{}", self.current_speed));
             // ui.text(format!("{}", self.current_wheel_multiplier));
         }
@@ -114,11 +129,15 @@ impl Tweak for EditorCameraSpeedTweak {
 
         self.current_speed = self.base_speed * self.current_wheel_multiplier;
 
-        if ui.is_key_down(hudhook::imgui::Key::LeftShift) || ui.is_key_down(hudhook::imgui::Key::RightShift) {
+        if ui.is_key_down(hudhook::imgui::Key::LeftShift)
+            || ui.is_key_down(hudhook::imgui::Key::RightShift)
+        {
             self.current_speed *= self.shift_multiplier;
         }
 
-        if ui.is_key_down(hudhook::imgui::Key::LeftCtrl) || ui.is_key_down(hudhook::imgui::Key::RightCtrl) {
+        if ui.is_key_down(hudhook::imgui::Key::LeftCtrl)
+            || ui.is_key_down(hudhook::imgui::Key::RightCtrl)
+        {
             self.current_speed *= self.control_multiplier;
         }
 
