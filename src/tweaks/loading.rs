@@ -78,7 +78,7 @@ impl LoadingTweak {
     }
 
     fn set_fast_menu_fade(&mut self, enabled: bool) {
-        self.fast_menu_fade = !enabled;
+        self.fast_menu_fade = enabled;
 
         if self.fast_menu_fade {
             self.fast_menu_fade_injection.inject();
@@ -88,7 +88,7 @@ impl LoadingTweak {
     }
 
     fn set_skip_load_finish(&mut self, enabled: bool) {
-        self.skip_load_finish = !enabled;
+        self.skip_load_finish = enabled;
 
         if self.skip_load_finish {
             self.skip_load_finish_injection.inject();
@@ -105,14 +105,14 @@ impl Tweak for LoadingTweak {
     
     fn render(&mut self, ui: &hudhook::imgui::Ui) {
         if ui.checkbox("Fast Main Menu Fade", &mut self.fast_menu_fade) {
-            self.set_fast_menu_fade(!self.fast_menu_fade);
+            self.set_fast_menu_fade(self.fast_menu_fade);
         }
         if ui.is_item_hovered() {
             ui.tooltip_text(format!("Speeds up the main menu loading fade\n(default: {DEFAULT_FAST_MENU_FADE}, vanilla: {VANILLA_FAST_MENU_FADE})"));
         }
 
         if ui.checkbox("Skip Loading Finish Animation", &mut self.skip_load_finish) {
-            self.set_skip_load_finish(!self.skip_load_finish);
+            self.set_skip_load_finish(self.skip_load_finish);
         }
         if ui.is_item_hovered() {
             ui.tooltip_text(format!("Skips the animation of the progress bar going to 100%\n(default: {DEFAULT_SKIP_LOAD_FINISH}, vanilla: {VANILLA_SKIP_LOAD_FINISH})"));
