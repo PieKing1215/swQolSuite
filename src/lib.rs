@@ -1,9 +1,13 @@
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_errors_doc)]
+
+#[allow(clippy::module_name_repetitions)]
 pub mod tweaks;
 
 use hooks::opengl3::ImguiOpenGl3Hooks;
-use hudhook::tracing::*;
-use hudhook::*;
-use imgui::*;
+use hudhook::tracing::{error, trace};
+use hudhook::{eject, hooks, imgui, windows, Hudhook, ImguiRenderLoop, MessageFilter};
+use imgui::{Condition, Io, Key, StyleColor, StyleVar, Ui};
 use memory_rs::internal::process_info::ProcessInfo;
 use tweaks::editor_camera_speed::EditorCameraSpeedTweak;
 use tweaks::editor_placement::EditorPlacementTweak;
@@ -26,8 +30,8 @@ pub unsafe extern "stdcall" fn DllMain(hmodule: HINSTANCE, reason: u32, _: *mut 
             println!("Spawned thread");
 
             std::panic::set_hook(Box::new(|panic_info| {
-                if let Some(_str) = panic_info.payload().downcast_ref::<&str>() {
-                    println!("panic occurred: {_str:?}");
+                if let Some(str) = panic_info.payload().downcast_ref::<&str>() {
+                    println!("panic occurred: {str:?}");
                 } else {
                     println!("panic occurred");
                 }
@@ -59,7 +63,7 @@ impl MainHud {
             version_string: format!(
                 "swQolSuite v{}{}",
                 env!("CARGO_PKG_VERSION"),
-                option_env!("SHA").map_or_else(|| "".to_string(), |sha| format!(" ({sha})"))
+                option_env!("SHA").map_or_else(String::new, |sha| format!(" ({sha})"))
             ),
             show: true,
             tweaks: vec![],
