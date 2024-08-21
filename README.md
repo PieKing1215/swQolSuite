@@ -58,6 +58,14 @@ Normally when loading into or exiting a world, once the loading finishes, the pr
 The animation is purely visual but it waits for it before spawning you in.<br>
 This tweak skips the animation so you start spawning immediately once ready.
 
+### Show Hidden Components
+If enabled, the editor component picker will include components marked as hidden (mainly deprecated ones).<br>
+Changing this setting requires reloading the save/world to apply.
+
+### No Minimize on Focus Lost 
+Disables the window automatically minimizing when it loses focus in fullscreen.<br>
+Turning fullscreen off and back on while this is enabled also fixes the window being forced on top of all other windows.
+
 ## Licenses
 
 Licensed under either of
