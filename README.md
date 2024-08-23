@@ -2,7 +2,7 @@
 Mod for [Stormworks: Build and Rescue](https://store.steampowered.com/app/573090/Stormworks_Build_and_Rescue/) that adds some QOL settings.<br/>
 Only supports 64 bit Windows version (stormworks64.exe). It might work through wine/proton, but untested.
 
-![image](https://github.com/user-attachments/assets/52329669-8bc5-4dce-a0b9-e4526c37d3b8)
+![image](https://github.com/user-attachments/assets/b8bae532-17b9-47ae-a093-671a8838e3e0)
 
 ## READ THIS FIRST
 swQolSuite uses low level techniques (mainly ASM injection) to patch the game since there's no other way to do it.<br/>
