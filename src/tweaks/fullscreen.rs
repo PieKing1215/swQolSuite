@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context};
-use hudhook::windows::Win32::UI::WindowsAndMessaging::{HWND_NOTOPMOST, WS_OVERLAPPED, WS_POPUP};
+use hudhook::windows::Win32::UI::WindowsAndMessaging::{HWND_NOTOPMOST, WS_POPUP};
 use memory_rs::{
     generate_aob_pattern,
     internal::{
