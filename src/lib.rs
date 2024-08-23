@@ -176,6 +176,7 @@ impl ImguiRenderLoop for MainHud {
             .position([50., 50.], Condition::FirstUseEver)
             .build(|| {
                 ui.text(&self.version_string);
+                ui.text("[~] Visibility");
                 if ui.button("Eject") {
                     self.uninit();
                 }
