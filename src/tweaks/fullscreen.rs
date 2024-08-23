@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context};
-use hudhook::windows::Win32::UI::WindowsAndMessaging::HWND_NOTOPMOST;
+use hudhook::windows::Win32::UI::WindowsAndMessaging::{HWND_NOTOPMOST, WS_OVERLAPPED, WS_POPUP};
 use memory_rs::{
     generate_aob_pattern,
     internal::{
@@ -12,14 +12,18 @@ use super::{MemoryRegionExt, Tweak};
 
 const VANILLA_NO_MINIMIZE: bool = false;
 const DEFAULT_NO_MINIMIZE: bool = true;
+const VANILLA_BORDERLESS: bool = false;
+const DEFAULT_BORDERLESS: bool = true;
 
-pub struct NoMinimizeOnLostFocus {
+pub struct FullscreenTweak {
     no_minimize: bool,
+    borderless: bool,
     no_minimize_injection: Injection,
     no_topmost_injection: Injection,
+    borderless_injection: Injection,
 }
 
-impl NoMinimizeOnLostFocus {
+impl FullscreenTweak {
     pub fn new(region: &MemoryRegion) -> anyhow::Result<Self> {
         // remove auto minimize
 
@@ -61,15 +65,41 @@ impl NoMinimizeOnLostFocus {
         let mut no_topmost_injection =
             Injection::new(check_addr + memory_pattern.size - inject.len(), inject);
 
+        // force borderless
+
+        // the MOV is flags for SetWindowLongW
+        let memory_pattern = generate_aob_pattern![
+            _, 0x83, _, _, _, // CMP (unimportant)
+            0x74, _, // JZ (unimportant)
+            0xbb, 0x00, 0x00, 0x00, 0x86 // MOV        EBX,10000110000000000000000000000000b
+        ];
+
+        let borderless_addr = {
+            region
+                .scan_aob_single(&memory_pattern)
+                .context(anyhow!("Error finding topmost arg addr"))?
+        };
+
+        // remove WS_POPUP flag
+        let inject = (0x86000000 & !WS_POPUP.0).to_le_bytes().to_vec();
+        let mut borderless_injection =
+            Injection::new(borderless_addr + memory_pattern.size - inject.len(), inject);
+
         if DEFAULT_NO_MINIMIZE {
             no_minimize_injection.inject();
             no_topmost_injection.inject();
         }
 
+        if DEFAULT_BORDERLESS {
+            borderless_injection.inject();
+        }
+
         Ok(Self {
             no_minimize: DEFAULT_NO_MINIMIZE,
+            borderless: DEFAULT_BORDERLESS,
             no_minimize_injection,
             no_topmost_injection,
+            borderless_injection,
         })
     }
 
@@ -84,15 +114,32 @@ impl NoMinimizeOnLostFocus {
             self.no_topmost_injection.remove_injection();
         }
     }
+
+    fn set_borderless(&mut self, enabled: bool) {
+        self.borderless = enabled;
+
+        if self.borderless {
+            self.borderless_injection.inject();
+        } else {
+            self.borderless_injection.remove_injection();
+        }
+    }
 }
 
-impl Tweak for NoMinimizeOnLostFocus {
+impl Tweak for FullscreenTweak {
     fn uninit(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
 
     fn render(&mut self, ui: &hudhook::imgui::Ui) {
-        if ui.checkbox("No Minimize on Lost Focus", &mut self.no_minimize) {
+        if ui.checkbox("Force Borderless Fullscreen", &mut self.borderless) {
+            self.set_borderless(self.borderless);
+        }
+        if ui.is_item_hovered() {
+            ui.tooltip_text(format!("Forces the window to open in borderless fullscreen instead of exclusive.\nYou need to toggle fullscreen for it to update.\n(default: {DEFAULT_BORDERLESS}, vanilla: {VANILLA_BORDERLESS})"));
+        }
+
+        if ui.checkbox("Disable Minimize on Lost Focus", &mut self.no_minimize) {
             self.set_no_minimize(self.no_minimize);
         }
         if ui.is_item_hovered() {
@@ -102,9 +149,11 @@ impl Tweak for NoMinimizeOnLostFocus {
 
     fn reset_to_default(&mut self) {
         self.set_no_minimize(DEFAULT_NO_MINIMIZE);
+        self.set_borderless(DEFAULT_BORDERLESS);
     }
 
     fn reset_to_vanilla(&mut self) {
         self.set_no_minimize(VANILLA_NO_MINIMIZE);
+        self.set_borderless(VANILLA_BORDERLESS);
     }
 }

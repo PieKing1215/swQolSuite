@@ -3,9 +3,9 @@ use memory_rs::internal::memory_region::MemoryRegion;
 pub mod editor_camera_speed;
 pub mod editor_placement;
 pub mod editor_show_hidden;
+pub mod fullscreen;
 pub mod loading;
 pub mod map_lag;
-pub mod no_minimize_on_lost_focus;
 
 pub trait Tweak {
     fn uninit(&mut self) -> anyhow::Result<()>;

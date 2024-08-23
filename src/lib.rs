@@ -1,5 +1,6 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unreadable_literal)]
 
 #[allow(clippy::module_name_repetitions)]
 pub mod tweaks;
@@ -12,9 +13,9 @@ use memory_rs::internal::process_info::ProcessInfo;
 use tweaks::editor_camera_speed::EditorCameraSpeedTweak;
 use tweaks::editor_placement::EditorPlacementTweak;
 use tweaks::editor_show_hidden::ShowHiddenComponents;
+use tweaks::fullscreen::FullscreenTweak;
 use tweaks::loading::LoadingTweak;
 use tweaks::map_lag::MapLagTweak;
-use tweaks::no_minimize_on_lost_focus::NoMinimizeOnLostFocus;
 use tweaks::Tweak;
 use windows::Win32::Foundation::HINSTANCE;
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
@@ -77,7 +78,7 @@ impl MainHud {
                 this.add_tweak(EditorPlacementTweak::new(&process.region));
                 this.add_tweak(LoadingTweak::new(&process.region));
                 this.add_tweak(ShowHiddenComponents::new(&process.region));
-                this.add_tweak(NoMinimizeOnLostFocus::new(&process.region));
+                this.add_tweak(FullscreenTweak::new(&process.region));
             },
             Err(err) => this.errors.push(err),
         }
