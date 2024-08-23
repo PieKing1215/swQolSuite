@@ -18,6 +18,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-provider: "buildjet"
       
       - name: Build
         run: cargo build --release --verbose
