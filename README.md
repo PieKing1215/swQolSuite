@@ -37,8 +37,7 @@ The patches are set up so they should usually continue to work after game update
 If after an update any patches fail, you should just get an error in the error window and the failing tweak will be disabled until it is updated to work again.
 
 # Features
-
-Full list of features is on [this Wiki page](https://github.com/PieKing1215/swQolSuite/wiki/Tweaks-&-Settings)
+See [Tweaks & Settings](https://github.com/PieKing1215/swQolSuite/wiki/Tweaks-&-Settings)
 
 ## Licenses
 
