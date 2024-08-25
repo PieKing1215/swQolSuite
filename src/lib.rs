@@ -215,6 +215,7 @@ impl ImguiRenderLoop for MainHud {
                 .build(|| {
                     for err in &self.errors {
                         ui.text(format!("{err:?}"));
+                        ui.separator();
                     }
                 });
         }
