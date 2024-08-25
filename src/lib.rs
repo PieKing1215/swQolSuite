@@ -10,6 +10,7 @@ use hudhook::tracing::{error, trace};
 use hudhook::{eject, hooks, imgui, windows, Hudhook, ImguiRenderLoop, MessageFilter};
 use imgui::{Condition, Io, Key, StyleColor, StyleVar, Ui};
 use memory_rs::internal::process_info::ProcessInfo;
+use tweaks::dev_mode::DevModeTweak;
 use tweaks::editor_camera_speed::EditorCameraSpeedTweak;
 use tweaks::editor_placement::EditorPlacementTweak;
 use tweaks::editor_show_hidden::ShowHiddenComponents;
@@ -79,6 +80,7 @@ impl MainHud {
                 this.add_tweak(LoadingTweak::new(&process.region));
                 this.add_tweak(ShowHiddenComponents::new(&process.region));
                 this.add_tweak(FullscreenTweak::new(&process.region));
+                this.add_tweak(DevModeTweak::new(&process.region));
             },
             Err(err) => this.errors.push(err),
         }

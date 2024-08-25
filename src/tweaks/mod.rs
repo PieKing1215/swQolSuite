@@ -1,5 +1,6 @@
 use memory_rs::internal::memory_region::MemoryRegion;
 
+pub mod dev_mode;
 pub mod editor_camera_speed;
 pub mod editor_placement;
 pub mod editor_show_hidden;
