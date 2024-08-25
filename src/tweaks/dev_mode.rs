@@ -34,7 +34,10 @@ impl DevModeTweak {
         // replace the JZ with JNZ
         let inject = vec![0x75];
         let mut dev_mode_injection = Injection::new(dev_mode_addr + 4, inject);
-        dev_mode_injection.inject();
+
+        if DEFAULT_DEV_MODE {
+            dev_mode_injection.inject();
+        }
 
         Ok(Self { dev_mode: DEFAULT_DEV_MODE, dev_mode_injection })
     }
