@@ -1,17 +1,17 @@
 # swQolSuite
 Mod for [Stormworks: Build and Rescue](https://store.steampowered.com/app/573090/Stormworks_Build_and_Rescue/) that adds some QOL settings.<br/>
-Only supports 64 bit Windows version (stormworks64.exe). It might work through wine/proton, but untested.
+Only supports 64 bit Windows version (stormworks64.exe). It might work through wine/proton/etc, but untested.
 
-![image](https://github.com/user-attachments/assets/b8bae532-17b9-47ae-a093-671a8838e3e0)
+![image](https://github.com/user-attachments/assets/cc56e1f8-e519-4d34-b4ca-f366fca5f1e7)
 
 ## READ THIS FIRST
-swQolSuite uses low level techniques (mainly ASM injection) to patch the game since there's no other way to do it.<br/>
+swQolSuite uses low level techniques (DLL injection + ASM manipulation) to patch the game since there's no other way to do it.<br/>
 Due to the nature of these methods, I won't make any guarantees about stability.<br/>
 **If something goes wrong it will most likely crash your game, so please save your work often.**<br/>
 Injecting or ejecting the mod are the most likely to crash, but it might also be possible when changing settings while in use (eg. changing editor settings while in editor)<br/>
 
-swQolSuite may be flagged by antiviruses as a side effect of how it works. The way swQolSuite injects into the game is similar to how some viruses hook other processes, and some antiviruses will detect this.
-Obviously I will say this repo (PieKing1215/swQolSuite) and official builds do not actually contain malware to my knowledge, but if you want to be sure, look over the code and build from source.
+**swQolSuite will likely be flagged by your Windows/antiviruses** as a side effect of how it works. The way swQolSuite injects into the game is similar to how some viruses hook other processes, and some antiviruses will detect this.
+Obviously I will say this repo (PieKing1215/swQolSuite) and official builds do not actually contain malware to my knowledge, but if you want to be sure, look over the code and [build from source](https://github.com/PieKing1215/swQolSuite/wiki/Building).
 
 swQolSuite is not a cheating/griefing tool, please do not request features that give you an advantage over other players in multiplayer.
 
@@ -34,41 +34,11 @@ You can press the grave/backtick/tilde key [`` `~ ``] to toggle the visibility o
 
 ## Game Updates
 The patches are set up so they should usually continue to work after game updates unless related parts of code were touched.<br/>
-However if after an update any patches fail, you should just get an error in the error window and the tweak will be disabled until it is updated to work again.
+If after an update any patches fail, you should just get an error in the error window and the failing tweak will be disabled until it is updated to work again.
 
-# Tweaks/Settings
+# Features
 
-### Map Sleep
-There's normally a 10 millisecond sleep in the map render code, which makes it very laggy. This setting lets you change or remove that.
-
-### Editor Camera
-Settings to adjust the speed of the editor free camera. Separate settings for base speed, shift speed, and control speed.
-
-### Disable Placement Support Check
-If enabled, disables the check for a supporting surface when placing parts (eg. pipes, wedges don't need to connect).
-
-### Disable Merge Check
-If enabled, disables the check for a connecting surface when merging two subgrids (ie. lets you merge grids even if they're not connected)
-
-### Fast Main Menu Fade
-Speeds up the main menu fade out/in when loading a save or returning to main menu (speeds up loading since it waits for the transition to end before starting)
-
-### Skip Loading Finish Animation
-Normally when loading into or exiting a world, once the loading finishes, the progress bar animates from its current percentage to 100%.<br/>
-The animation is purely visual but it waits for it before spawning you in.<br/>
-This tweak skips the animation so you start spawning immediately once ready.
-
-### Show Hidden Components
-If enabled, the editor component picker will include components marked as hidden (mainly deprecated ones).<br/>
-Changing this setting requires reloading the save/world to apply.
-
-### Force Borderless Fullscreen
-Changes fullscreen to open as borderless instead of exclusive.<br/>
-You need to toggle fullscreen off and on for it to update.
-
-### Disable Minimize on Focus Lost
-Disables the window automatically minimizing when it loses focus in fullscreen.<br/>
-Turning fullscreen off and back on while this is enabled also fixes the window being forced on top of all other windows.
+Full list of features is on [this Wiki page](https://github.com/PieKing1215/swQolSuite/wiki/Tweaks-&-Settings)
 
 ## Licenses
 
