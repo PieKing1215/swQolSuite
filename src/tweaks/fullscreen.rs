@@ -28,11 +28,11 @@ impl FullscreenTweak {
         // remove auto minimize
 
         // code that minimizes the window on lost focus
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
-            0x48, 0x8b, 0x8e, 0x48, 0x03, 0x00,
-            0x00, // MOV        RCX,qword ptr [RSI + 0x348]
-            0xba, 0x06, 0x00, 0x00, 0x00, // MOV        EDX,0x6
-            0xff, 0x15, _, _, _, _ // CALL       qword ptr [->USER32.DLL::ShowWindow]
+            0x48, 0x8b, 0x8e, 0x48, 0x03, 0x00, 0x00, // MOV        RCX,qword ptr [RSI + 0x348]
+            0xba, 0x06, 0x00, 0x00, 0x00,             // MOV        EDX,0x6
+            0xff, 0x15, _, _, _, _                    // CALL       qword ptr [->USER32.DLL::ShowWindow]
         ];
 
         let check_addr = {
@@ -49,8 +49,9 @@ impl FullscreenTweak {
         // remove forced top level
 
         // hWndInsertAfter arg for SetWindowPos
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
-            0x8b, _, 0xe0, // MOV        param_1,dword ptr [RBP + local_54[12]]
+            0x8b, _, 0xe0,                        // MOV        param_1,dword ptr [RBP + local_54[12]]
             0x48, 0xc7, _, 0xff, 0xff, 0xff, 0xff // MOV        param_2,-0x1   (HWND_TOPMOST)
         ];
 
@@ -68,9 +69,10 @@ impl FullscreenTweak {
         // force borderless
 
         // the MOV is flags for SetWindowLongW
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
-            _, 0x83, _, _, _, // CMP (unimportant)
-            0x74, _, // JZ (unimportant)
+            _, 0x83, _, _, _,            // CMP (unimportant)
+            0x74, _,                     // JZ (unimportant)
             0xbb, 0x00, 0x00, 0x00, 0x86 // MOV        EBX,10000110000000000000000000000000b
         ];
 

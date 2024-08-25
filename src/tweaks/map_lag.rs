@@ -21,19 +21,11 @@ impl MapLagTweak {
     pub fn new(region: &MemoryRegion) -> anyhow::Result<Self> {
         let sleep_addr = {
             // `Sleep(10)`
+            #[rustfmt::skip]
             let memory_pattern = generate_aob_pattern![
-                0xB9,
-                VANILLA_SLEEP,
-                0x00,
-                0x00,
-                0x00, //
-                0xFF,
-                0x15,
-                _,
-                _,
-                _,
-                _, // CALL Sleep
-                0x48
+                0xB9, VANILLA_SLEEP, 0x00, 0x00, 0x00, // MOV        param_1,0xa (10)
+                0xFF, 0x15, _, _, _, _,                // CALL       qword ptr [->KERNEL32.DLL::Sleep]
+                0x48                                   // MOV        ... (unimportant)
             ];
             region
                 .scan_aob_single(&memory_pattern)

@@ -27,15 +27,16 @@ impl EditorPlacementTweak {
         // --- support check
 
         // The start of the function that determines if a component placement has support
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
-            0x4c, 0x8b, 0xdc, // MOV      R11,RSP
-            0x49, 0x89, 0x5b, 0x10, // MOV      qword ptr [R11 + local_res10],RBX
-            0x49, 0x89, 0x6b, 0x18, // MOV      qword ptr [R11 + local_res18],RBP
-            0x56, // PUSH     RSI
-            0x57, // PUSH     RDI
-            0x41, 0x54, // PUSH     R12
-            0x41, 0x56, // PUSH     R14
-            0x41, 0x57, // PUSH     R15
+            0x4c, 0x8b, 0xdc,                        // MOV      R11,RSP
+            0x49, 0x89, 0x5b, 0x10,                  // MOV      qword ptr [R11 + local_res10],RBX
+            0x49, 0x89, 0x6b, 0x18,                  // MOV      qword ptr [R11 + local_res18],RBP
+            0x56,                                    // PUSH     RSI
+            0x57,                                    // PUSH     RDI
+            0x41, 0x54,                              // PUSH     R12
+            0x41, 0x56,                              // PUSH     R14
+            0x41, 0x57,                              // PUSH     R15
             0x48, 0x81, 0xec, 0xb0, 0x00, 0x00, 0x00 // SUB      RSP,0xb0
         ];
         let support_addr = {
@@ -45,9 +46,10 @@ impl EditorPlacementTweak {
         };
 
         // basically just early exit `return true`
+        #[rustfmt::skip]
         let inject = vec![
             0xB0, 0x01, // MOV  al,01
-            0xC3, // RET
+            0xC3,       // RET
         ];
 
         let mut disable_support_check_inject = Injection::new(support_addr, inject);
@@ -59,15 +61,16 @@ impl EditorPlacementTweak {
         // --- merge check
 
         // The start of the function that determines if a merge is valid
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
-            0x48, 0x8b, 0xc4, // MOV        RAX,RSP
-            0x4c, 0x89, 0x40, 0x18, // MOV        qword ptr [RAX + local_res18],R8
-            0x48, 0x89, 0x50, 0x10, // MOV        qword ptr [RAX + local_res10],RDX
-            0x48, 0x89, 0x48, 0x08, // MOV        qword ptr [RAX + local_res8],RCX
-            0x55, // PUSH       RBP
-            0x56, // PUSH       RSI
-            0x57, // PUSH       RDI
-            0x41, 0x54, // PUSH       R12
+            0x48, 0x8b, 0xc4,                        // MOV        RAX,RSP
+            0x4c, 0x89, 0x40, 0x18,                  // MOV        qword ptr [RAX + local_res18],R8
+            0x48, 0x89, 0x50, 0x10,                  // MOV        qword ptr [RAX + local_res10],RDX
+            0x48, 0x89, 0x48, 0x08,                  // MOV        qword ptr [RAX + local_res8],RCX
+            0x55,                                    // PUSH       RBP
+            0x56,                                    // PUSH       RSI
+            0x57,                                    // PUSH       RDI
+            0x41, 0x54,                              // PUSH       R12
             0x48, 0x81, 0xec, 0xf8, 0x00, 0x00, 0x00 // SUB        RSP,0xf8
         ];
         let merge_addr = {

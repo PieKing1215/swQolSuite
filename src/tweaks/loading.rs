@@ -32,9 +32,10 @@ impl LoadingTweak {
         // ... // some junk because I need more space to inject
         // menu_state.fade_cur++;
         // ```
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
-            0x49, 0x8B, 0xD4, // MOV    RDX,R12
-            0xff, 0x90, 0xf0, 0x00, 0x00, 0x00, // CALL   qword ptr [RAX + 0xf0]
+            0x49, 0x8B, 0xD4,                        // MOV    RDX,R12 (unimportant)
+            0xff, 0x90, 0xf0, 0x00, 0x00, 0x00,      // CALL   qword ptr [RAX + 0xf0] (unimportant)
             0x41, 0xff, 0x86, 0x80, 0xdb, 0x0b, 0x00 // INC    dword ptr [R14 + 0xbdb80]
         ];
 
@@ -59,10 +60,11 @@ impl LoadingTweak {
         // --- skip loading wheel finish animation
 
         // `&& (visual_progress == 1.0)`
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
             0x0f, 0x2e, 0xc6, // UCOMISS    XMM0,XMM6
-            0x7a, 0x41, // JP         +41
-            0x75, 0x3f // JNZ        +3f
+            0x7a, 0x41,       // JP         +41
+            0x75, 0x3f        // JNZ        +3f
         ];
 
         let skip_load_finish_addr = {

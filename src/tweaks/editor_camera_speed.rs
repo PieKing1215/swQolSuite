@@ -44,15 +44,13 @@ pub struct EditorCameraSpeedTweak {
 impl EditorCameraSpeedTweak {
     pub fn new(region: &MemoryRegion) -> anyhow::Result<Self> {
         // `xmm5 = param_1->shift_down ? 0.2 : 1.0`
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
-            0x80, 0xb9, 0x1a, 0x0e, 0x00, 0x00,
-            0x00, // CMP      byte ptr [RCX + param_1->shift_down],0x0
-            0x74, 0x0a, // JZ       +0xA
-            0xf3, 0x0f, 0x10, 0x2d, _, _, _,
-            _, // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 0.2
-            0xeb, 0x08, // JMP      +0x8
-            0xf3, 0x0f, 0x10, 0x2d, _, _, _,
-            _ // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 1.0
+            0x80, 0xb9, 0x1a, 0x0e, 0x00, 0x00, 0x00, // CMP      byte ptr [RCX + param_1->shift_down],0x0
+            0x74, 0x0a,                               // JZ       +0xA
+            0xf3, 0x0f, 0x10, 0x2d, _, _, _, _,       // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 0.2
+            0xeb, 0x08,                               // JMP      +0x8
+            0xf3, 0x0f, 0x10, 0x2d, _, _, _, _        // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 1.0
         ];
         let speed_addr = {
             region
