@@ -26,7 +26,7 @@ impl ShowHiddenComponents {
         #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
             0xf7, 0x86, 0xa0, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, // TEST       dword ptr [RSI + 0x2a0],0x20000000
-            0x77, 0x67                                                  // JA         LAB_140444479
+            0x77, 0x67                                                  // JA
         ];
 
         let check_addr = {
@@ -51,7 +51,7 @@ impl ShowHiddenComponents {
         let memory_pattern = generate_aob_pattern![
             0x8b, 0x86, 0xa0, 0x02, 0x00, 0x00, // MOV        EAX,dword ptr [RSI + 0x2a0]
             0xa9, 0x00, 0x00, 0x00, 0x20,       // TEST       EAX,0x20000000
-            0x0f, 0x87, 0x14, 0x01, 0x00, 0x00  // JA         LAB_1405ce8a6
+            0x0f, 0x87, 0x14, 0x01, 0x00, 0x00  // JA
         ];
 
         let check_addr = {
