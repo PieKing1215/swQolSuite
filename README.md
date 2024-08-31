@@ -16,7 +16,7 @@ Obviously I will say this repo (PieKing1215/swQolSuite) and official builds do n
 swQolSuite is not a cheating/griefing tool, please do not request features that give you an advantage over other players in multiplayer.
 
 ## Download
-For "stable" releases (there are none right now), see [Releases](../../releases).<br/>
+For releases, see [Releases](../../releases).<br/>
 For dev builds: sign in to GitHub, go [here](https://github.com/PieKing1215/swQolSuite/actions/workflows/autobuild.yml?query=branch%3Amain+is%3Asuccess), click the latest one, scroll down to "Artifacts" and download it.<br/>
 Or download the latest at https://nightly.link/PieKing1215/swQolSuite/workflows/autobuild/main<br/>
 Unzip and run swqols-inject.exe to run.
