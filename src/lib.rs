@@ -6,9 +6,12 @@
 pub mod tweaks;
 
 use hooks::opengl3::ImguiOpenGl3Hooks;
+use hudhook::imgui::TreeNodeFlags;
 use hudhook::tracing::{error, trace};
 use hudhook::{eject, hooks, imgui, windows, Hudhook, ImguiRenderLoop, MessageFilter};
 use imgui::{Condition, Io, Key, StyleColor, StyleVar, Ui};
+use itertools::Itertools;
+use memory_rs::internal::memory_region::MemoryRegion;
 use memory_rs::internal::process_info::ProcessInfo;
 use tweaks::dev_mode::DevModeTweak;
 use tweaks::editor_camera_speed::EditorCameraSpeedTweak;
@@ -17,7 +20,7 @@ use tweaks::editor_show_hidden::ShowHiddenComponents;
 use tweaks::fullscreen::FullscreenTweak;
 use tweaks::loading::LoadingTweak;
 use tweaks::map_lag::MapLagTweak;
-use tweaks::Tweak;
+use tweaks::{Tweak, TweakWrapper};
 use windows::Win32::Foundation::HINSTANCE;
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 
@@ -55,7 +58,7 @@ pub unsafe extern "stdcall" fn DllMain(hmodule: HINSTANCE, reason: u32, _: *mut 
 struct MainHud {
     version_string: String,
     show: bool,
-    tweaks: Vec<Box<dyn Tweak + Send + Sync>>,
+    tweaks: Vec<TweakWrapper>,
     errors: Vec<anyhow::Error>,
 }
 
@@ -74,13 +77,13 @@ impl MainHud {
 
         match ProcessInfo::new(Some("stormworks64.exe")) {
             Ok(process) => {
-                this.add_tweak(MapLagTweak::new(&process.region));
-                this.add_tweak(EditorCameraSpeedTweak::new(&process.region));
-                this.add_tweak(EditorPlacementTweak::new(&process.region));
-                this.add_tweak(LoadingTweak::new(&process.region));
-                this.add_tweak(ShowHiddenComponents::new(&process.region));
-                this.add_tweak(FullscreenTweak::new(&process.region));
-                this.add_tweak(DevModeTweak::new(&process.region));
+                this.add_tweak::<EditorCameraSpeedTweak>(&process.region);
+                this.add_tweak::<EditorPlacementTweak>(&process.region);
+                this.add_tweak::<ShowHiddenComponents>(&process.region);
+                this.add_tweak::<MapLagTweak>(&process.region);
+                this.add_tweak::<LoadingTweak>(&process.region);
+                this.add_tweak::<FullscreenTweak>(&process.region);
+                this.add_tweak::<DevModeTweak>(&process.region);
             },
             Err(err) => this.errors.push(err),
         }
@@ -88,9 +91,10 @@ impl MainHud {
         this
     }
 
-    fn add_tweak<T: Tweak + Send + Sync + 'static>(&mut self, tw: anyhow::Result<T>) {
+    fn add_tweak<T: Tweak + Send + Sync + 'static>(&mut self, region: &MemoryRegion) {
+        let tw = TweakWrapper::new::<T>(region);
         match tw {
-            Ok(tw) => self.tweaks.push(Box::new(tw)),
+            Ok(tw) => self.tweaks.push(tw),
             Err(e) => self.errors.push(e),
         }
     }
@@ -120,6 +124,7 @@ impl ImguiRenderLoop for MainHud {
     //     ctx.io_mut().mouse_draw_cursor = self.show;
     // }
 
+    #[allow(clippy::too_many_lines)]
     fn render(&mut self, ui: &mut Ui) {
         if ui.is_key_pressed_no_repeat(Key::GraveAccent) {
             self.show = !self.show;
@@ -189,23 +194,59 @@ impl ImguiRenderLoop for MainHud {
             .always_auto_resize(true)
             .resizable(false)
             .position([250., 50.], Condition::FirstUseEver)
+            .size_constraints([0.0, 0.0], [-1.0, ui.io().display_size[1] * 0.8])
             .build(|| {
                 if ui.button("Reset to Default") {
                     for tw in &mut self.tweaks {
-                        tw.reset_to_default();
+                        if let Err(e) = tw.reset_to_default() {
+                            self.errors.push(e);
+                            self.show = true;
+                        }
                     }
                 };
                 ui.same_line();
                 if ui.button("Reset to Vanilla") {
                     for tw in &mut self.tweaks {
-                        tw.reset_to_vanilla();
+                        if let Err(e) = tw.reset_to_vanilla() {
+                            self.errors.push(e);
+                            self.show = true;
+                        }
                     }
                 };
 
                 ui.separator();
 
-                for tw in &mut self.tweaks {
-                    tw.render(ui);
+                let categories = self
+                    .tweaks
+                    .iter_mut()
+                    .map(|tw| (tw.category().clone(), tw))
+                    .into_group_map();
+
+                for (category, tweaks) in categories.into_iter().sorted_by(|a, b| {
+                    if a.0.is_none() || b.0.is_none() {
+                        b.0.cmp(&a.0)
+                    } else {
+                        a.0.cmp(&b.0)
+                    }
+                }) {
+                    let render = || {
+                        for tw in tweaks {
+                            if let Err(e) = tw.render(ui) {
+                                self.errors.push(e);
+                                self.show = true;
+                            }
+                        }
+                    };
+
+                    if let Some(category) = category {
+                        if ui.collapsing_header(category, TreeNodeFlags::empty()) {
+                            ui.indent_by(8.0);
+                            render();
+                            ui.unindent_by(8.0);
+                        }
+                    } else {
+                        render();
+                    }
                 }
             });
 

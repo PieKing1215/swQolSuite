@@ -1,69 +1,41 @@
-use anyhow::{anyhow, Context};
-use memory_rs::{
-    generate_aob_pattern,
-    internal::{
-        injections::{Inject, Injection},
-        memory_region::MemoryRegion,
-    },
-};
+use anyhow::Context;
+use memory_rs::generate_aob_pattern;
 
-use super::{MemoryRegionExt, Tweak};
+use super::{Defaults, InjectAt, Tweak};
 
-const VANILLA_SLEEP: u8 = 0x0A; // (10)
-const DEFAULT_SLEEP: u8 = 0;
+const SLEEP_DEFAULTS: Defaults<u8> = Defaults::new(0, 0x0A); // (0x0A == 10)
 
-pub struct MapLagTweak {
-    sleep: u8,
-    sleep_injection: Injection,
-}
-
-impl MapLagTweak {
-    pub fn new(region: &MemoryRegion) -> anyhow::Result<Self> {
-        let sleep_addr = {
-            // `Sleep(10)`
-            #[rustfmt::skip]
-            let memory_pattern = generate_aob_pattern![
-                0xB9, VANILLA_SLEEP, 0x00, 0x00, 0x00, // MOV        param_1,0xa (10)
-                0xFF, 0x15, _, _, _, _,                // CALL       qword ptr [->KERNEL32.DLL::Sleep]
-                0x48                                   // MOV        ... (unimportant)
-            ];
-            region
-                .scan_aob_single(&memory_pattern)
-                .context(anyhow!("Error finding Sleep(10) addr"))?
-        };
-
-        let mut sleep_injection = Injection::new(sleep_addr + 1, vec![DEFAULT_SLEEP]);
-        sleep_injection.inject();
-
-        Ok(Self { sleep: DEFAULT_SLEEP, sleep_injection })
-    }
-}
+pub struct MapLagTweak;
 
 impl Tweak for MapLagTweak {
-    fn uninit(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
+    fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
+    where
+        Self: Sized,
+    {
+        builder.set_category(Some("Performance"));
 
-    fn render(&mut self, ui: &hudhook::imgui::Ui) {
-        ui.set_next_item_width(100.0);
-        if ui.slider("Map Sleep (ms)", 0, VANILLA_SLEEP * 2, &mut self.sleep) {
-            self.sleep_injection.f_new = vec![self.sleep];
-            self.sleep_injection.inject();
-        }
-        if ui.is_item_hovered() {
-            ui.tooltip_text(format!("Change the artificial delay in the map screen rendering\n(default: {DEFAULT_SLEEP}, vanilla: {VANILLA_SLEEP})"));
-        }
-    }
+        #[rustfmt::skip]
+        let sleep_injection = builder.number_injection(
+            // `Sleep(10)`
+            generate_aob_pattern![
+                0xB9, 0x0A, 0x00, 0x00, 0x00, // MOV        param_1,0xa (10)
+                0xFF, 0x15, _, _, _, _,       // CALL       qword ptr [->KERNEL32.DLL::Sleep]
+                0x48                          // MOV        ... (unimportant)
+            ],
+            InjectAt::StartOffset(1),
+        ).context("Error finding Sleep(10) addr")?;
 
-    fn reset_to_default(&mut self) {
-        self.sleep = DEFAULT_SLEEP;
-        self.sleep_injection.f_new = vec![self.sleep];
-        self.sleep_injection.inject();
-    }
+        builder
+            .slider(
+                "Map Sleep (ms)",
+                SLEEP_DEFAULTS,
+                0,
+                SLEEP_DEFAULTS.vanilla * 2,
+            )
+            .tooltip("Change the artificial delay in the map screen rendering")
+            .injection(sleep_injection)
+            .build()?;
 
-    fn reset_to_vanilla(&mut self) {
-        self.sleep = VANILLA_SLEEP;
-        self.sleep_injection.f_new = vec![self.sleep];
-        self.sleep_injection.inject();
+        Ok(Self)
     }
 }

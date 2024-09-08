@@ -2,16 +2,12 @@ use std::{arch::asm, sync::atomic::Ordering};
 
 use anyhow::Context;
 use atomic_float::AtomicF32;
-use hudhook::imgui::TreeNodeFlags;
 use memory_rs::{
     generate_aob_pattern,
-    internal::{
-        injections::{Inject, Injection},
-        memory_region::MemoryRegion,
-    },
+    internal::injections::{Inject, Injection},
 };
 
-use super::{MemoryRegionExt, Tweak};
+use super::{InjectAt, Tweak};
 
 const VANILLA_BASE_SPEED: f32 = 1.0;
 const DEFAULT_BASE_SPEED: f32 = 0.8;
@@ -41,8 +37,13 @@ pub struct EditorCameraSpeedTweak {
     _speed_inject: Injection,
 }
 
-impl EditorCameraSpeedTweak {
-    pub fn new(region: &MemoryRegion) -> anyhow::Result<Self> {
+impl Tweak for EditorCameraSpeedTweak {
+    fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
+    where
+        Self: Sized,
+    {
+        builder.set_category(Some("Editor"));
+
         // `xmm5 = param_1->shift_down ? 0.2 : 1.0`
         #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
@@ -52,19 +53,22 @@ impl EditorCameraSpeedTweak {
             0xeb, 0x08,                               // JMP      +0x8
             0xf3, 0x0f, 0x10, 0x2d, _, _, _, _        // MOVSS    XMM5,dword ptr [FLOAT_XXX]    = 1.0
         ];
-        let speed_addr = {
-            region
-                .scan_aob_single(&memory_pattern)
-                .context("Error finding editor camera speed addr")?
-        };
 
-        // CALL custom_speed
-        let mut inject = vec![0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0xeb, 0x08];
-        inject.extend_from_slice(&(custom_speed as usize).to_le_bytes());
-        // pad with NOP
-        inject.resize(memory_pattern.size, 0x90);
+        let mut speed_inject = builder
+            .injection(
+                &memory_pattern,
+                {
+                    // CALL custom_speed
+                    let mut inject = vec![0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0xeb, 0x08];
+                    inject.extend_from_slice(&(custom_speed as usize).to_le_bytes());
+                    // pad with NOP
+                    inject.resize(memory_pattern.size, 0x90);
+                    inject
+                },
+                InjectAt::Start,
+            )
+            .context("Error finding editor camera speed addr")?;
 
-        let mut speed_inject = Injection::new(speed_addr, inject);
         speed_inject.inject();
 
         Ok(Self {
@@ -78,46 +82,50 @@ impl EditorCameraSpeedTweak {
             _speed_inject: speed_inject,
         })
     }
-}
-
-impl Tweak for EditorCameraSpeedTweak {
-    fn uninit(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
 
     fn render(&mut self, ui: &hudhook::imgui::Ui) {
-        if ui.collapsing_header("Editor Camera", TreeNodeFlags::empty()) {
-            ui.set_next_item_width(100.0);
-            ui.slider("Base Speed", 0.1, 4.0, &mut self.base_speed);
-            if ui.is_item_hovered() {
-                ui.tooltip_text(format!(
-                    "(default: {DEFAULT_BASE_SPEED}, vanilla: {VANILLA_BASE_SPEED})"
-                ));
-            }
-
-            ui.set_next_item_width(100.0);
-            ui.slider("Shift Multiplier", 0.1, 4.0, &mut self.shift_multiplier);
-            if ui.is_item_hovered() {
-                ui.tooltip_text(format!(
-                    "(default: {DEFAULT_SHIFT_MULTIPLIER}, vanilla: {VANILLA_SHIFT_MULTIPLIER})"
-                ));
-            }
-
-            ui.set_next_item_width(100.0);
-            ui.slider("Ctrl Multiplier", 0.1, 4.0, &mut self.control_multiplier);
-            if ui.is_item_hovered() {
-                ui.tooltip_text(format!("(default: {DEFAULT_CONTROL_MULTIPLIER}, vanilla: {VANILLA_CONTROL_MULTIPLIER})"));
-            }
-
-            // ui.set_next_item_width(100.0);
-            // ui.slider("Scroll Multiplier", 0.1, 4.0, &mut self.wheel_multiplier);
-            // if ui.is_item_hovered() {
-            //     ui.tooltip_text(format!("(default: {DEFAULT_WHEEL_MULTIPLIER}, vanilla: {VANILLA_WHEEL_MULTIPLIER})"));
-            // }
-
-            // ui.text(format!("{}", self.current_speed));
-            // ui.text(format!("{}", self.current_wheel_multiplier));
+        ui.set_next_item_width(100.0);
+        ui.slider("Camera Base Speed", 0.1, 4.0, &mut self.base_speed);
+        if ui.is_item_hovered() {
+            ui.tooltip_text(format!(
+                "(default: {DEFAULT_BASE_SPEED}, vanilla: {VANILLA_BASE_SPEED})"
+            ));
         }
+
+        ui.set_next_item_width(100.0);
+        ui.slider(
+            "Camera Shift Multiplier",
+            0.1,
+            4.0,
+            &mut self.shift_multiplier,
+        );
+        if ui.is_item_hovered() {
+            ui.tooltip_text(format!(
+                "(default: {DEFAULT_SHIFT_MULTIPLIER}, vanilla: {VANILLA_SHIFT_MULTIPLIER})"
+            ));
+        }
+
+        ui.set_next_item_width(100.0);
+        ui.slider(
+            "Camera Ctrl Multiplier",
+            0.1,
+            4.0,
+            &mut self.control_multiplier,
+        );
+        if ui.is_item_hovered() {
+            ui.tooltip_text(format!(
+                "(default: {DEFAULT_CONTROL_MULTIPLIER}, vanilla: {VANILLA_CONTROL_MULTIPLIER})"
+            ));
+        }
+
+        // ui.set_next_item_width(100.0);
+        // ui.slider("Scroll Multiplier", 0.1, 4.0, &mut self.wheel_multiplier);
+        // if ui.is_item_hovered() {
+        //     ui.tooltip_text(format!("(default: {DEFAULT_WHEEL_MULTIPLIER}, vanilla: {VANILLA_WHEEL_MULTIPLIER})"));
+        // }
+
+        // ui.text(format!("{}", self.current_speed));
+        // ui.text(format!("{}", self.current_wheel_multiplier));
     }
 
     fn constant_render(&mut self, ui: &hudhook::imgui::Ui) {
