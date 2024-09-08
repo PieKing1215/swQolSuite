@@ -18,8 +18,9 @@ use tweaks::editor_camera_speed::EditorCameraSpeedTweak;
 use tweaks::editor_placement::EditorPlacementTweak;
 use tweaks::editor_show_hidden::ShowHiddenComponents;
 use tweaks::fullscreen::FullscreenTweak;
-use tweaks::loading::LoadingTweak;
+use tweaks::fast_loading_animations::FastLoadingAnimationsTweak;
 use tweaks::map_lag::MapLagTweak;
+use tweaks::multithreaded_loading::MultithreadedLoadingTweak;
 use tweaks::{Tweak, TweakWrapper};
 use windows::Win32::Foundation::HINSTANCE;
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
@@ -81,7 +82,8 @@ impl MainHud {
                 this.add_tweak::<EditorPlacementTweak>(&process.region);
                 this.add_tweak::<ShowHiddenComponents>(&process.region);
                 this.add_tweak::<MapLagTweak>(&process.region);
-                this.add_tweak::<LoadingTweak>(&process.region);
+                this.add_tweak::<FastLoadingAnimationsTweak>(&process.region);
+                this.add_tweak::<MultithreadedLoadingTweak>(&process.region);
                 this.add_tweak::<FullscreenTweak>(&process.region);
                 this.add_tweak::<DevModeTweak>(&process.region);
             },

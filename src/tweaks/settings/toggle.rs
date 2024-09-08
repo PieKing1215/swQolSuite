@@ -1,6 +1,6 @@
 use memory_rs::internal::injections::{Inject, Injection};
 
-use crate::tweaks::{Defaults, TweakBuilder};
+use crate::tweaks::{Defaults, DetourUntyped, TweakBuilder};
 
 use super::{Setting, SettingImpl};
 
@@ -25,6 +25,7 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
                 tooltip: String::new(),
                 label: label.into(),
                 injections: vec![],
+                detours: vec![],
             },
         }
     }
@@ -45,6 +46,12 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
         self
     }
 
+    #[must_use]
+    pub fn detour(mut self, detour: impl DetourUntyped + Send + Sync + 'static, invert: bool) -> Self {
+        self.toggle.detours.push((Box::new(detour), invert));
+        self
+    }
+
     pub fn build(self) -> anyhow::Result<()> {
         self.tweak_builder
             .add_setting(Setting::new(self.toggle, self.defaults))
@@ -55,6 +62,7 @@ pub struct Toggle {
     label: String,
     tooltip: String,
     injections: Vec<(Injection, bool)>,
+    detours: Vec<(Box<dyn DetourUntyped + Send + Sync>, bool)>,
 }
 
 impl SettingImpl<bool> for Toggle {
@@ -72,6 +80,23 @@ impl SettingImpl<bool> for Toggle {
                     injection.inject();
                 } else {
                     injection.remove_injection();
+                }
+            }
+        }
+
+        for (detour, invert) in &mut self.detours {
+            #[allow(clippy::collapsible_else_if)]
+            if value {
+                if *invert {
+                    detour.disable()?;
+                } else {
+                    detour.enable()?;
+                }
+            } else {
+                if *invert {
+                    detour.enable()?;
+                } else {
+                    detour.disable()?;
                 }
             }
         }

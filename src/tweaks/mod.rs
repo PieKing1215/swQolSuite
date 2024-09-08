@@ -7,6 +7,7 @@ use memory_rs::internal::{
     memory_region::MemoryRegion,
 };
 use num_traits::ToBytes;
+use retour::GenericDetour;
 use settings::{slider::SliderBuilder, toggle::ToggleBuilder, SettingUntyped};
 
 pub mod dev_mode;
@@ -14,9 +15,10 @@ pub mod editor_camera_speed;
 pub mod editor_placement;
 pub mod editor_show_hidden;
 pub mod fullscreen;
-pub mod loading;
+pub mod fast_loading_animations;
 pub mod map_lag;
 pub mod settings;
+pub mod multithreaded_loading;
 
 pub trait Tweak {
     fn new(builder: &mut TweakBuilder) -> anyhow::Result<Self>
@@ -255,5 +257,20 @@ impl<N: ToBytes> NumberInjection<N> {
 
     pub fn remove_injection(&mut self) {
         self.injection.remove_injection();
+    }
+}
+
+pub trait DetourUntyped {
+    fn enable(&mut self) -> anyhow::Result<()>;
+    fn disable(&mut self) -> anyhow::Result<()>;
+}
+
+impl<T: retour::Function> DetourUntyped for GenericDetour<T> {
+    fn enable(&mut self) -> anyhow::Result<()> {
+        unsafe { Ok(GenericDetour::enable(self)?) }
+    }
+
+    fn disable(&mut self) -> anyhow::Result<()> {
+        unsafe { Ok(GenericDetour::disable(self)?) }
     }
 }

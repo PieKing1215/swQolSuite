@@ -8,9 +8,9 @@ use super::{Defaults, InjectAt, Tweak};
 const FAST_MENU_FADE_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 const SKIP_LOAD_FINISH_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 
-pub struct LoadingTweak;
+pub struct FastLoadingAnimationsTweak;
 
-impl Tweak for LoadingTweak {
+impl Tweak for FastLoadingAnimationsTweak {
     #[allow(clippy::too_many_lines)]
     fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
     where
