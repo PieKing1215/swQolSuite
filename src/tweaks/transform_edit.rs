@@ -1,7 +1,9 @@
-
 use anyhow::Context;
 use hudhook::imgui::Key;
-use memory_rs::{generate_aob_pattern, internal::injections::{Inject, Injection}};
+use memory_rs::{
+    generate_aob_pattern,
+    internal::injections::{Inject, Injection},
+};
 use retour::GenericDetour;
 
 use super::{InjectAt, MemoryRegionExt, Tweak};
@@ -57,11 +59,10 @@ impl Tweak for TransformEditTweak {
         Self: Sized,
     {
         let update_quaternion_detour = unsafe {
-            extern "fastcall" fn hook(
-                tr: *mut Transform
-            ) {
+            extern "fastcall" fn hook(tr: *mut Transform) {
                 unsafe {
-                    let update_quaternion: UpdateQuaternionFn = UPDATE_QUATERNION_FN.unwrap_unchecked();
+                    let update_quaternion: UpdateQuaternionFn =
+                        UPDATE_QUATERNION_FN.unwrap_unchecked();
                     update_quaternion(tr);
 
                     #[allow(clippy::cast_precision_loss)]
@@ -93,19 +94,19 @@ impl Tweak for TransformEditTweak {
                 std::mem::transmute::<usize, UpdateQuaternionFn>(update_quaternion_fn_addr),
                 hook,
             )?;
-            UPDATE_QUATERNION_FN = Some(std::mem::transmute::<&(), UpdateQuaternionFn>(det.trampoline()));
+            UPDATE_QUATERNION_FN = Some(std::mem::transmute::<&(), UpdateQuaternionFn>(
+                det.trampoline(),
+            ));
 
             det
         };
 
         let editor_destructor_detour = unsafe {
-            extern "fastcall" fn hook(
-                editor: *mut (),
-                param_2: *mut (),
-            ) {
+            extern "fastcall" fn hook(editor: *mut (), param_2: *mut ()) {
                 unsafe {
                     TRANSFORM = None;
-                    let editor_destructor: EditorDestructorFn = EDITOR_DESTRUCTOR_FN.unwrap_unchecked();
+                    let editor_destructor: EditorDestructorFn =
+                        EDITOR_DESTRUCTOR_FN.unwrap_unchecked();
                     editor_destructor(editor, param_2);
                 }
             }
@@ -132,7 +133,9 @@ impl Tweak for TransformEditTweak {
                 std::mem::transmute::<usize, EditorDestructorFn>(editor_destructor_fn_addr),
                 hook,
             )?;
-            EDITOR_DESTRUCTOR_FN = Some(std::mem::transmute::<&(), EditorDestructorFn>(det.trampoline()));
+            EDITOR_DESTRUCTOR_FN = Some(std::mem::transmute::<&(), EditorDestructorFn>(
+                det.trampoline(),
+            ));
 
             det
         };
@@ -166,22 +169,31 @@ impl Tweak for TransformEditTweak {
     fn render(&mut self, ui: &hudhook::imgui::Ui) {
         if let Some(tr) = unsafe { TRANSFORM } {
             ui.text("Editor placement transform");
-            let mut next = unsafe{ (*tr).rotation_mat3i_cur };
+            let mut next = unsafe { (*tr).rotation_mat3i_cur };
             let mut changed = false;
             #[allow(clippy::identity_op)]
             for r in 0..3 {
                 ui.set_next_item_width(80.0);
-                changed = changed || ui.input_int(format!("{}", r*3 + 1), &mut next[r*3 + 0]).build();
+                changed = changed
+                    || ui
+                        .input_int(format!("{}", r * 3 + 1), &mut next[r * 3 + 0])
+                        .build();
                 ui.same_line();
                 ui.set_next_item_width(80.0);
-                changed = changed || ui.input_int(format!("{}", r*3 + 2), &mut next[r*3 + 1]).build();
+                changed = changed
+                    || ui
+                        .input_int(format!("{}", r * 3 + 2), &mut next[r * 3 + 1])
+                        .build();
                 ui.same_line();
                 ui.set_next_item_width(80.0);
-                changed = changed || ui.input_int(format!("{}", r*3 + 3), &mut next[r*3 + 2]).build();
+                changed = changed
+                    || ui
+                        .input_int(format!("{}", r * 3 + 3), &mut next[r * 3 + 2])
+                        .build();
             }
             if changed {
                 #[allow(clippy::cast_precision_loss)]
-                unsafe{
+                unsafe {
                     (*tr).rotation_mat3i_cur = next;
                     (*tr).rotation_mat3f_cur = next.map(|i| i as _);
                 }
@@ -196,7 +208,8 @@ impl Tweak for TransformEditTweak {
             if let Some(tr) = unsafe { TRANSFORM } {
                 #[allow(clippy::cast_precision_loss)]
                 unsafe {
-                    (*tr).rotation_mat3i_cur[idx as usize] = (*tr).rotation_mat3i_cur[idx as usize].saturating_add(add);
+                    (*tr).rotation_mat3i_cur[idx as usize] =
+                        (*tr).rotation_mat3i_cur[idx as usize].saturating_add(add);
                     (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
                     self.check_orthonormal(&(*tr).rotation_mat3i_cur);
                 }
@@ -253,16 +266,17 @@ fn is_orthonormal(matrix: &[i32; 9]) -> bool {
     }
 
     fn det(matrix: &[i32; 9]) -> i32 {
-        matrix[0] * (matrix[4] * matrix[8] - matrix[7] * matrix[5]) -
-        matrix[1] * (matrix[3] * matrix[8] - matrix[5] * matrix[6]) +
-        matrix[2] * (matrix[3] * matrix[7] - matrix[4] * matrix[6])
+        matrix[0] * (matrix[4] * matrix[8] - matrix[7] * matrix[5])
+            - matrix[1] * (matrix[3] * matrix[8] - matrix[5] * matrix[6])
+            + matrix[2] * (matrix[3] * matrix[7] - matrix[4] * matrix[6])
     }
 
     let col1 = [matrix[0], matrix[3], matrix[6]];
     let col2 = [matrix[1], matrix[4], matrix[7]];
     let col3 = [matrix[2], matrix[5], matrix[8]];
 
-    let is_normalized = magnitude_sq(&col1) == 1 && magnitude_sq(&col2) == 1 && magnitude_sq(&col3) == 1;
+    let is_normalized =
+        magnitude_sq(&col1) == 1 && magnitude_sq(&col2) == 1 && magnitude_sq(&col3) == 1;
     let is_orthogonal = dot(&col1, &col2) == 0 && dot(&col1, &col3) == 0 && dot(&col2, &col3) == 0;
     let is_det_positive = det(matrix) >= 0;
 

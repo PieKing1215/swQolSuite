@@ -47,7 +47,11 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
     }
 
     #[must_use]
-    pub fn detour(mut self, detour: impl DetourUntyped + Send + Sync + 'static, invert: bool) -> Self {
+    pub fn detour(
+        mut self,
+        detour: impl DetourUntyped + Send + Sync + 'static,
+        invert: bool,
+    ) -> Self {
         self.toggle.detours.push((Box::new(detour), invert));
         self
     }

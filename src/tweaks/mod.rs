@@ -14,11 +14,11 @@ pub mod dev_mode;
 pub mod editor_camera_speed;
 pub mod editor_placement;
 pub mod editor_show_hidden;
-pub mod fullscreen;
 pub mod fast_loading_animations;
+pub mod fullscreen;
 pub mod map_lag;
-pub mod settings;
 pub mod multithreaded_loading;
+pub mod settings;
 pub mod transform_edit;
 
 pub trait Tweak {
