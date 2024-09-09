@@ -149,7 +149,7 @@ impl TweakWrapper {
 
     pub fn save_config(&mut self) -> anyhow::Result<toml::value::Table> {
         let mut config = self.inner.save_config()?;
-        
+
         for setting in &self.settings {
             setting.save_config(&mut config)?;
         }
@@ -240,7 +240,16 @@ impl<'b> TweakBuilder<'b> {
     #[must_use]
     pub fn slider<
         'r,
-        N: ToBytes + Copy + PartialEq + fmt::Display + Serialize + for<'a> Deserialize<'a> + imgui::internal::DataTypeKind + Send + Sync + 'static,
+        N: ToBytes
+            + Copy
+            + PartialEq
+            + fmt::Display
+            + Serialize
+            + for<'a> Deserialize<'a>
+            + imgui::internal::DataTypeKind
+            + Send
+            + Sync
+            + 'static,
     >(
         &'r mut self,
         display: impl Into<String>,

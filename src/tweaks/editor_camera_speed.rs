@@ -187,9 +187,18 @@ impl Tweak for EditorCameraSpeedTweak {
     fn save_config(&mut self) -> anyhow::Result<toml::value::Table> {
         let mut map = toml::map::Map::new();
 
-        map.insert("base_speed".to_owned(), toml::Value::try_from(self.base_speed)?);
-        map.insert("shift_multiplier".to_owned(), toml::Value::try_from(self.shift_multiplier)?);
-        map.insert("control_multiplier".to_owned(), toml::Value::try_from(self.control_multiplier)?);
+        map.insert(
+            "base_speed".to_owned(),
+            toml::Value::try_from(self.base_speed)?,
+        );
+        map.insert(
+            "shift_multiplier".to_owned(),
+            toml::Value::try_from(self.shift_multiplier)?,
+        );
+        map.insert(
+            "control_multiplier".to_owned(),
+            toml::Value::try_from(self.control_multiplier)?,
+        );
 
         Ok(map)
     }

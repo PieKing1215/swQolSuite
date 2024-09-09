@@ -133,7 +133,14 @@ impl MainHud {
     fn save_config(&mut self) -> anyhow::Result<()> {
         let mut map = BTreeMap::new();
 
-        map.insert("swQolSuite", std::iter::once(("version".to_owned(), toml::Value::try_from(self.simple_version_string.clone())?)).collect());
+        map.insert(
+            "swQolSuite",
+            std::iter::once((
+                "version".to_owned(),
+                toml::Value::try_from(self.simple_version_string.clone())?,
+            ))
+            .collect(),
+        );
 
         for (tw, id) in &mut self.tweaks {
             let saved = tw.save_config()?;

@@ -18,7 +18,16 @@ pub struct SliderBuilder<'b, 'r, N: ToBytes> {
 impl<
         'b,
         'r,
-        N: ToBytes + Copy + PartialEq + fmt::Display + Serialize + for<'a> Deserialize<'a> + imgui::internal::DataTypeKind + Send + Sync + 'static,
+        N: ToBytes
+            + Copy
+            + PartialEq
+            + fmt::Display
+            + Serialize
+            + for<'a> Deserialize<'a>
+            + imgui::internal::DataTypeKind
+            + Send
+            + Sync
+            + 'static,
     > SliderBuilder<'b, 'r, N>
 {
     #[must_use]

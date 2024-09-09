@@ -21,7 +21,11 @@ pub struct Setting<T: Copy> {
 }
 
 impl<T: Copy> Setting<T> {
-    fn new(inner: impl SettingImpl<T> + Send + Sync + 'static, defaults: Defaults<T>, config_key: Option<String>) -> Self {
+    fn new(
+        inner: impl SettingImpl<T> + Send + Sync + 'static,
+        defaults: Defaults<T>,
+        config_key: Option<String>,
+    ) -> Self {
         Self {
             value: defaults.default,
             defaults,
@@ -48,7 +52,7 @@ impl<T: Copy + PartialEq + Serialize + for<'a> Deserialize<'a>> SettingUntyped f
     fn reset_to_vanilla(&mut self) -> anyhow::Result<()> {
         self.set(self.defaults.vanilla)
     }
-    
+
     fn load_config(&mut self, value: &toml::value::Table) -> anyhow::Result<()> {
         if let Some(key) = &self.config_key {
             if let Some(value) = value.get(key) {
@@ -58,8 +62,8 @@ impl<T: Copy + PartialEq + Serialize + for<'a> Deserialize<'a>> SettingUntyped f
 
         Ok(())
     }
-    
-    fn save_config(&self, into: &mut toml::value::Table) -> anyhow::Result<()>{
+
+    fn save_config(&self, into: &mut toml::value::Table) -> anyhow::Result<()> {
         if let Some(key) = &self.config_key {
             into.insert(key.clone(), toml::Value::try_from(self.value)?);
         }
