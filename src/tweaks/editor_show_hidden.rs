@@ -1,11 +1,15 @@
 use anyhow::Context;
 use memory_rs::generate_aob_pattern;
 
-use super::{Defaults, InjectAt, Tweak};
+use super::{Defaults, InjectAt, Tweak, TweakConfig};
 
 const SHOW_HIDDEN_COMPONENTS_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 
 pub struct ShowHiddenComponents;
+
+impl TweakConfig for ShowHiddenComponents {
+    const CONFIG_ID: &'static str = "show_hidden_components_tweak";
+}
 
 impl Tweak for ShowHiddenComponents {
     fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
@@ -46,6 +50,7 @@ impl Tweak for ShowHiddenComponents {
         builder
             .toggle("Show Hidden Components (reload save)", SHOW_HIDDEN_COMPONENTS_DEFAULTS)
             .tooltip("Forces editor to show components flagged as hidden.\nChanging this setting requires reloading your save to apply.")
+            .config_key("show_hidden_components")
             .injection(injection_1, false)
             .injection(injection_2, false)
             .build()?;

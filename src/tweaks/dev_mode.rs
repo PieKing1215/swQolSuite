@@ -1,11 +1,15 @@
 use anyhow::Context;
 use memory_rs::generate_aob_pattern;
 
-use super::{Defaults, InjectAt, Tweak};
+use super::{Defaults, InjectAt, Tweak, TweakConfig};
 
 const DEV_MODE_DEFAULTS: Defaults<bool> = Defaults::new(false, false);
 
 pub struct DevModeTweak;
+
+impl TweakConfig for DevModeTweak {
+    const CONFIG_ID: &'static str = "dev_mode_tweak";
+}
 
 impl Tweak for DevModeTweak {
     fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
@@ -27,6 +31,7 @@ impl Tweak for DevModeTweak {
         builder
             .toggle("Dev Mode (reload main menu)", DEV_MODE_DEFAULTS)
             .tooltip("Enables developer tools on the main menu.\nOpen a save then quit to menu to reload.")
+            .config_key("dev_mode")
             .injection(inject, false)
             .build()?;
 

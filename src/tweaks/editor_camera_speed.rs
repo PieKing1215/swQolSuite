@@ -7,7 +7,7 @@ use memory_rs::{
     internal::injections::{Inject, Injection},
 };
 
-use super::{InjectAt, Tweak};
+use super::{InjectAt, Tweak, TweakConfig};
 
 const VANILLA_BASE_SPEED: f32 = 1.0;
 const DEFAULT_BASE_SPEED: f32 = 0.8;
@@ -35,6 +35,10 @@ pub struct EditorCameraSpeedTweak {
     current_wheel_multiplier: f32,
     current_speed: f32,
     _speed_inject: Injection,
+}
+
+impl TweakConfig for EditorCameraSpeedTweak {
+    const CONFIG_ID: &'static str = "editor_camera_speed_tweak";
 }
 
 impl Tweak for EditorCameraSpeedTweak {
@@ -162,6 +166,32 @@ impl Tweak for EditorCameraSpeedTweak {
         self.shift_multiplier = VANILLA_SHIFT_MULTIPLIER;
         self.control_multiplier = VANILLA_CONTROL_MULTIPLIER;
         self.wheel_multiplier = VANILLA_WHEEL_MULTIPLIER;
+    }
+
+    fn load_config(&mut self, value: &toml::value::Table) -> anyhow::Result<()> {
+        if let Some(base_speed) = value.get("base_speed") {
+            self.base_speed = toml::Value::try_into(base_speed.clone())?;
+        }
+
+        if let Some(shift_multiplier) = value.get("shift_multiplier") {
+            self.shift_multiplier = toml::Value::try_into(shift_multiplier.clone())?;
+        }
+
+        if let Some(control_multiplier) = value.get("control_multiplier") {
+            self.control_multiplier = toml::Value::try_into(control_multiplier.clone())?;
+        }
+
+        Ok(())
+    }
+
+    fn save_config(&mut self) -> anyhow::Result<toml::value::Table> {
+        let mut map = toml::map::Map::new();
+
+        map.insert("base_speed".to_owned(), toml::Value::try_from(self.base_speed)?);
+        map.insert("shift_multiplier".to_owned(), toml::Value::try_from(self.shift_multiplier)?);
+        map.insert("control_multiplier".to_owned(), toml::Value::try_from(self.control_multiplier)?);
+
+        Ok(map)
     }
 }
 

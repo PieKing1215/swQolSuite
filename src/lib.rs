@@ -5,6 +5,10 @@
 #[allow(clippy::module_name_repetitions)]
 pub mod tweaks;
 
+use std::collections::BTreeMap;
+
+use figment::providers::{Format, Toml};
+use figment::Figment;
 use hooks::opengl3::ImguiOpenGl3Hooks;
 use hudhook::imgui::TreeNodeFlags;
 use hudhook::tracing::{error, trace};
@@ -22,7 +26,7 @@ use tweaks::fullscreen::FullscreenTweak;
 use tweaks::map_lag::MapLagTweak;
 use tweaks::multithreaded_loading::MultithreadedLoadingTweak;
 use tweaks::transform_edit::TransformEditTweak;
-use tweaks::{Tweak, TweakWrapper};
+use tweaks::{Tweak, TweakConfig, TweakWrapper};
 use windows::Win32::Foundation::HINSTANCE;
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 
@@ -59,19 +63,22 @@ pub unsafe extern "stdcall" fn DllMain(hmodule: HINSTANCE, reason: u32, _: *mut 
 
 struct MainHud {
     version_string: String,
+    simple_version_string: String,
     show: bool,
-    tweaks: Vec<TweakWrapper>,
+    tweaks: Vec<(TweakWrapper, &'static str)>,
     errors: Vec<anyhow::Error>,
 }
 
 impl MainHud {
     fn new() -> Self {
+        let simple_version_string = format!(
+            "{}{}",
+            env!("CARGO_PKG_VERSION"),
+            option_env!("SHA").map_or_else(String::new, |sha| format!(" ({sha})"))
+        );
         let mut this = Self {
-            version_string: format!(
-                "swQolSuite v{}{}",
-                env!("CARGO_PKG_VERSION"),
-                option_env!("SHA").map_or_else(String::new, |sha| format!(" ({sha})"))
-            ),
+            version_string: format!("swQolSuite v{simple_version_string}"),
+            simple_version_string,
             show: true,
             tweaks: vec![],
             errors: vec![],
@@ -92,21 +99,61 @@ impl MainHud {
             Err(err) => this.errors.push(err),
         }
 
+        if let Err(e) = this.load_config() {
+            this.errors.push(e);
+        }
+
         this
     }
 
-    fn add_tweak<T: Tweak + Send + Sync + 'static>(&mut self, region: &MemoryRegion) {
+    fn add_tweak<T: Tweak + TweakConfig + Send + Sync + 'static>(&mut self, region: &MemoryRegion) {
         let tw = TweakWrapper::new::<T>(region);
         match tw {
-            Ok(tw) => self.tweaks.push(tw),
+            Ok(tw) => {
+                self.tweaks.push((tw, T::CONFIG_ID));
+            },
             Err(e) => self.errors.push(e),
         }
+    }
+
+    fn load_config(&mut self) -> anyhow::Result<()> {
+        let figment = Figment::new().merge(Toml::file("swQolSuite.toml"));
+
+        for (tw, id) in &mut self.tweaks {
+            let config = figment.find_value(id).ok();
+            if let Some(config) = config {
+                let config = config.deserialize()?;
+                tw.load_config(&config)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn save_config(&mut self) -> anyhow::Result<()> {
+        let mut map = BTreeMap::new();
+
+        map.insert("swQolSuite", std::iter::once(("version".to_owned(), toml::Value::try_from(self.simple_version_string.clone())?)).collect());
+
+        for (tw, id) in &mut self.tweaks {
+            let saved = tw.save_config()?;
+            if !saved.is_empty() {
+                map.insert(id, saved);
+            }
+        }
+
+        let toml_string = toml::to_string_pretty(&map)?;
+        std::fs::write("swQolSuite.toml", &toml_string)?;
+
+        Ok(())
     }
 
     fn uninit(&mut self) {
         let mut ok = true;
 
-        for mut tw in self.tweaks.drain(..) {
+        let map = std::mem::take(&mut self.tweaks);
+
+        for (mut tw, _) in map {
             if let Err(e) = tw.uninit() {
                 self.errors.push(e);
                 ok = false;
@@ -159,7 +206,7 @@ impl ImguiRenderLoop for MainHud {
             });
         style_padding.end();
 
-        for tw in &mut self.tweaks {
+        for (tw, _) in &mut self.tweaks {
             tw.constant_render(ui);
         }
 
@@ -201,7 +248,7 @@ impl ImguiRenderLoop for MainHud {
             .size_constraints([0.0, 0.0], [-1.0, ui.io().display_size[1] * 0.8])
             .build(|| {
                 if ui.button("Reset to Default") {
-                    for tw in &mut self.tweaks {
+                    for (tw, _) in &mut self.tweaks {
                         if let Err(e) = tw.reset_to_default() {
                             self.errors.push(e);
                             self.show = true;
@@ -210,7 +257,7 @@ impl ImguiRenderLoop for MainHud {
                 };
                 ui.same_line();
                 if ui.button("Reset to Vanilla") {
-                    for tw in &mut self.tweaks {
+                    for (tw, _) in &mut self.tweaks {
                         if let Err(e) = tw.reset_to_vanilla() {
                             self.errors.push(e);
                             self.show = true;
@@ -218,12 +265,30 @@ impl ImguiRenderLoop for MainHud {
                     }
                 };
 
+                if ui.button("Load Config") {
+                    if let Err(e) = self.load_config() {
+                        self.errors.push(e);
+                        self.show = true;
+                    }
+                };
+                ui.same_line();
+                let config_hovered = ui.is_item_hovered();
+                if ui.button("Save Config") {
+                    if let Err(e) = self.save_config() {
+                        self.errors.push(e);
+                        self.show = true;
+                    }
+                };
+                if config_hovered || ui.is_item_hovered() {
+                    ui.tooltip_text("swQolSuite.toml, next to game's exe");
+                }
+
                 ui.separator();
 
                 let categories = self
                     .tweaks
                     .iter_mut()
-                    .map(|tw| (tw.category().clone(), tw))
+                    .map(|(tw, _)| (tw.category().clone(), tw))
                     .into_group_map();
 
                 for (category, tweaks) in categories.into_iter().sorted_by(|a, b| {

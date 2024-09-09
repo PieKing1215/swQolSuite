@@ -1,11 +1,15 @@
 use anyhow::Context;
 use memory_rs::generate_aob_pattern;
 
-use super::{Defaults, InjectAt, Tweak};
+use super::{Defaults, InjectAt, Tweak, TweakConfig};
 
 const SLEEP_DEFAULTS: Defaults<u8> = Defaults::new(0, 0x0A); // (0x0A == 10)
 
 pub struct MapLagTweak;
+
+impl TweakConfig for MapLagTweak {
+    const CONFIG_ID: &'static str = "map_lag_tweak";
+}
 
 impl Tweak for MapLagTweak {
     fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
@@ -33,6 +37,7 @@ impl Tweak for MapLagTweak {
                 SLEEP_DEFAULTS.vanilla * 2,
             )
             .tooltip("Change the artificial delay in the map screen rendering")
+            .config_key("sleep_ms")
             .injection(sleep_injection)
             .build()?;
 

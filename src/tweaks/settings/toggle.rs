@@ -7,6 +7,7 @@ use super::{Setting, SettingImpl};
 pub struct ToggleBuilder<'b, 'r> {
     tweak_builder: &'r mut TweakBuilder<'b>,
     defaults: Defaults<bool>,
+    config_key: Option<String>,
     toggle: Toggle,
 }
 
@@ -21,6 +22,7 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
         Self {
             tweak_builder,
             defaults,
+            config_key: None,
             toggle: Toggle {
                 tooltip: String::new(),
                 label: label.into(),
@@ -37,6 +39,13 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
             tooltip = format!("{tooltip}\n");
         }
         self.toggle.tooltip = tooltip;
+        self
+    }
+
+    #[must_use]
+    pub fn config_key(mut self, config_key: impl Into<String>) -> Self {
+        let config_key: String = config_key.into();
+        self.config_key = Some(config_key);
         self
     }
 
@@ -58,7 +67,7 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
 
     pub fn build(self) -> anyhow::Result<()> {
         self.tweak_builder
-            .add_setting(Setting::new(self.toggle, self.defaults))
+            .add_setting(Setting::new(self.toggle, self.defaults, self.config_key))
     }
 }
 

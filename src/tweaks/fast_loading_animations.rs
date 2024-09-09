@@ -3,12 +3,16 @@ use std::arch::asm;
 use anyhow::Context;
 use memory_rs::generate_aob_pattern;
 
-use super::{Defaults, InjectAt, Tweak};
+use super::{Defaults, InjectAt, Tweak, TweakConfig};
 
 const FAST_MENU_FADE_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 const SKIP_LOAD_FINISH_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 
 pub struct FastLoadingAnimationsTweak;
+
+impl TweakConfig for FastLoadingAnimationsTweak {
+    const CONFIG_ID: &'static str = "fast_loading_animations_tweak";
+}
 
 impl Tweak for FastLoadingAnimationsTweak {
     #[allow(clippy::too_many_lines)]
@@ -49,6 +53,7 @@ impl Tweak for FastLoadingAnimationsTweak {
         builder
             .toggle("Fast Main Menu Fade", FAST_MENU_FADE_DEFAULTS)
             .tooltip("Speeds up the main menu loading fade")
+            .config_key("fast_main_menu_fade")
             .injection(menu_fade_injection, false)
             .build()?;
 
@@ -70,6 +75,7 @@ impl Tweak for FastLoadingAnimationsTweak {
         builder
             .toggle("Skip Loading Finish Animation", SKIP_LOAD_FINISH_DEFAULTS)
             .tooltip("Skips the animation of the progress bar going to 100%")
+            .config_key("skip_loading_finish_animation")
             .injection(skip_load_finish_injection, false)
             .build()?;
 

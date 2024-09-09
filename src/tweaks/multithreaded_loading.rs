@@ -6,7 +6,7 @@ use retour::GenericDetour;
 
 use crate::tweaks::MemoryRegionExt;
 
-use super::{Defaults, Tweak};
+use super::{Defaults, Tweak, TweakConfig};
 
 type LoadRomFn = extern "fastcall" fn(*mut (), *mut (), usize, *mut ());
 type LoadSaveFn = extern "fastcall" fn(*mut (), *mut (), *mut (), *mut (), *mut ());
@@ -18,6 +18,10 @@ static mut LOAD_SAVE_FN: Option<LoadSaveFn> = None;
 static mut LOAD_ROM_THREAD: Option<JoinHandle<()>> = None;
 
 pub struct MultithreadedLoadingTweak;
+
+impl TweakConfig for MultithreadedLoadingTweak {
+    const CONFIG_ID: &'static str = "multithreaded_loading_tweak";
+}
 
 impl Tweak for MultithreadedLoadingTweak {
     #[allow(clippy::too_many_lines)]
@@ -138,6 +142,7 @@ impl Tweak for MultithreadedLoadingTweak {
         builder
             .toggle("Multithreaded Loading (experimental)", MULTITHREADED_LOADING_DEFAULTS)
             .tooltip("EXPERIMENTAL!\nSplits asset loading into a separate thread, reducing world load time by ~40%.\nI haven't had any issues using this but I wouldn't be suprised if there are unknown edge cases.")
+            .config_key("multithreaded_loading")
             .detour(load_rom_detour, false)
             .detour(load_save_detour, false)
             .build()?;

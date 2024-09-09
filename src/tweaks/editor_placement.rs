@@ -1,12 +1,16 @@
 use anyhow::Context;
 use memory_rs::generate_aob_pattern;
 
-use super::{Defaults, InjectAt, Tweak};
+use super::{Defaults, InjectAt, Tweak, TweakConfig};
 
 const SUPPORT_CHECK_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 const MERGE_CHECK_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 
 pub struct EditorPlacementTweak;
+
+impl TweakConfig for EditorPlacementTweak {
+    const CONFIG_ID: &'static str = "editor_placement_tweak";
+}
 
 impl Tweak for EditorPlacementTweak {
     fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
@@ -42,6 +46,7 @@ impl Tweak for EditorPlacementTweak {
         builder
             .toggle("Disable Placement Support Check", SUPPORT_CHECK_DEFAULTS)
             .tooltip("Normally many parts (eg. pipes) need support on a side in order to place them.\nThis disables that check.")
+            .config_key("disable_placement_support_check")
             .injection(disable_support_check_inject, false)
             .build()?;
 
@@ -72,6 +77,7 @@ impl Tweak for EditorPlacementTweak {
         builder
             .toggle("Disable Merge Check", MERGE_CHECK_DEFAULTS)
             .tooltip("Normally two subgrids must be touching in order to merge them.\nThis disables that check.")
+            .config_key("disable_merge_check")
             .injection(disable_merge_check_inject, false)
             .build()?;
 

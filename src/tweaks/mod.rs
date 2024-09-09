@@ -8,6 +8,7 @@ use memory_rs::internal::{
 };
 use num_traits::ToBytes;
 use retour::GenericDetour;
+use serde::{Deserialize, Serialize};
 use settings::{slider::SliderBuilder, toggle::ToggleBuilder, SettingUntyped};
 
 pub mod dev_mode;
@@ -20,6 +21,10 @@ pub mod map_lag;
 pub mod multithreaded_loading;
 pub mod settings;
 pub mod transform_edit;
+
+pub trait TweakConfig {
+    const CONFIG_ID: &'static str;
+}
 
 pub trait Tweak {
     fn new(builder: &mut TweakBuilder) -> anyhow::Result<Self>
@@ -36,6 +41,14 @@ pub trait Tweak {
 
     fn reset_to_default(&mut self) {}
     fn reset_to_vanilla(&mut self) {}
+
+    fn load_config(&mut self, _value: &toml::value::Table) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn save_config(&mut self) -> anyhow::Result<toml::value::Table> {
+        Ok(toml::value::Table::default())
+    }
 }
 
 #[derive(Debug)]
@@ -125,6 +138,24 @@ impl TweakWrapper {
 
         Ok(())
     }
+
+    pub fn load_config(&mut self, value: &toml::value::Table) -> anyhow::Result<()> {
+        for setting in &mut self.settings {
+            setting.load_config(value)?;
+        }
+
+        self.inner.load_config(value)
+    }
+
+    pub fn save_config(&mut self) -> anyhow::Result<toml::value::Table> {
+        let mut config = self.inner.save_config()?;
+        
+        for setting in &self.settings {
+            setting.save_config(&mut config)?;
+        }
+
+        Ok(config)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,7 +240,7 @@ impl<'b> TweakBuilder<'b> {
     #[must_use]
     pub fn slider<
         'r,
-        N: ToBytes + Copy + fmt::Display + imgui::internal::DataTypeKind + Send + Sync + 'static,
+        N: ToBytes + Copy + PartialEq + fmt::Display + Serialize + for<'a> Deserialize<'a> + imgui::internal::DataTypeKind + Send + Sync + 'static,
     >(
         &'r mut self,
         display: impl Into<String>,

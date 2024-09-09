@@ -2,12 +2,16 @@ use anyhow::Context;
 use hudhook::windows::Win32::UI::WindowsAndMessaging::{HWND_NOTOPMOST, WS_POPUP};
 use memory_rs::generate_aob_pattern;
 
-use super::{Defaults, InjectAt, Tweak};
+use super::{Defaults, InjectAt, Tweak, TweakConfig};
 
 const NO_MINIMIZE_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 const BORDERLESS_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 
 pub struct FullscreenTweak;
+
+impl TweakConfig for FullscreenTweak {
+    const CONFIG_ID: &'static str = "fullscreen_tweak";
+}
 
 impl Tweak for FullscreenTweak {
     fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
@@ -61,6 +65,7 @@ impl Tweak for FullscreenTweak {
         builder
             .toggle("Disable Minimize on Lost Focus", NO_MINIMIZE_DEFAULTS)
             .tooltip("Prevents the window from automatically minimizing when you tab out in fullscreen.\nTurn fullscreen off and back on while enabled to fix window stuck on top")
+            .config_key("disable_minimize_on_lost_focus")
             .injection(no_minimize_injection, false)
             .injection(no_topmost_injection, false)
             .build()?;
@@ -68,6 +73,7 @@ impl Tweak for FullscreenTweak {
         builder
             .toggle("Force Borderless Fullscreen", BORDERLESS_DEFAULTS)
             .tooltip("Forces the window to open in borderless fullscreen instead of exclusive.\nYou need to toggle fullscreen for it to update.")
+            .config_key("force_borderless_fullscreen")
             .injection(borderless_injection, false)
             .build()?;
 

@@ -27,3 +27,6 @@ atomic_float = "1.0.0"
 retour = { git = "https://github.com/Hpmason/retour-rs", rev = "3bab630e234528e848c6c4e0a81656d262224579", features = ["static-detour"] }
 num-traits = "0.2"
 itertools = "0.13"
+figment = { version = "0.10", features = ["toml"] }
+toml = "0.8"
+serde = "1.0"

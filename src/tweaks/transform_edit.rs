@@ -6,7 +6,7 @@ use memory_rs::{
 };
 use retour::GenericDetour;
 
-use super::{InjectAt, MemoryRegionExt, Tweak};
+use super::{InjectAt, MemoryRegionExt, Tweak, TweakConfig};
 
 #[repr(C)]
 struct Transform {
@@ -63,6 +63,10 @@ impl TransformEditTweak {
             }
         }
     }
+}
+
+impl TweakConfig for TransformEditTweak {
+    const CONFIG_ID: &'static str = "transform_edit_tweak";
 }
 
 impl Tweak for TransformEditTweak {

@@ -2,6 +2,7 @@ use std::fmt::{self};
 
 use hudhook::imgui;
 use num_traits::ToBytes;
+use serde::{Deserialize, Serialize};
 
 use crate::tweaks::{Defaults, NumberInjection, TweakBuilder};
 
@@ -10,13 +11,14 @@ use super::{Setting, SettingImpl};
 pub struct SliderBuilder<'b, 'r, N: ToBytes> {
     tweak_builder: &'r mut TweakBuilder<'b>,
     defaults: Defaults<N>,
+    config_key: Option<String>,
     slider: Slider<N>,
 }
 
 impl<
         'b,
         'r,
-        N: ToBytes + Copy + fmt::Display + imgui::internal::DataTypeKind + Send + Sync + 'static,
+        N: ToBytes + Copy + PartialEq + fmt::Display + Serialize + for<'a> Deserialize<'a> + imgui::internal::DataTypeKind + Send + Sync + 'static,
     > SliderBuilder<'b, 'r, N>
 {
     #[must_use]
@@ -31,6 +33,7 @@ impl<
         Self {
             tweak_builder,
             defaults,
+            config_key: None,
             slider: Slider {
                 min,
                 max,
@@ -52,6 +55,13 @@ impl<
     }
 
     #[must_use]
+    pub fn config_key(mut self, config_key: impl Into<String>) -> Self {
+        let config_key: String = config_key.into();
+        self.config_key = Some(config_key);
+        self
+    }
+
+    #[must_use]
     pub fn injection(mut self, injection: NumberInjection<N>) -> Self {
         self.slider.injections.push(injection);
         self
@@ -59,7 +69,7 @@ impl<
 
     pub fn build(self) -> anyhow::Result<()> {
         self.tweak_builder
-            .add_setting(Setting::new(self.slider, self.defaults))
+            .add_setting(Setting::new(self.slider, self.defaults, self.config_key))
     }
 }
 
