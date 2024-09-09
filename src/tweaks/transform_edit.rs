@@ -31,7 +31,7 @@ pub struct TransformEditTweak {
     _editor_destructor_detour: GenericDetour<EditorDestructorFn>,
     disable_quaternion_slerp: bool,
     disable_quaternion_slerp_injection: Injection,
-    safety_check_inject: Injection,
+    _safety_check_inject: Injection,
 }
 
 impl TransformEditTweak {
@@ -215,7 +215,7 @@ impl Tweak for TransformEditTweak {
             _editor_destructor_detour: editor_destructor_detour,
             disable_quaternion_slerp: false,
             disable_quaternion_slerp_injection,
-            safety_check_inject,
+            _safety_check_inject: safety_check_inject,
         })
     }
 
@@ -227,7 +227,7 @@ impl Tweak for TransformEditTweak {
 
     fn render(&mut self, ui: &hudhook::imgui::Ui) {
         if let Some(tr) = unsafe { TRANSFORM } {
-            ui.text("Editor placement transform");
+            ui.text("Editor Placement Transform");
             if ui.is_item_hovered() {
                 ui.tooltip_text("These numbers represent the rotation matrix of the component being placed (same as in xml).\nYou can also increment (or hold alt to decrement) using the Numpad (make sure NumLock is on).\nNumpad 0 resets the matrix.");
             }
