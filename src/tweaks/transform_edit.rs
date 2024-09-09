@@ -229,7 +229,7 @@ impl Tweak for TransformEditTweak {
         if let Some(tr) = unsafe { TRANSFORM } {
             ui.text("Editor Placement Transform");
             if ui.is_item_hovered() {
-                ui.tooltip_text("These numbers represent the rotation matrix of the component being placed (same as in xml).\nYou can also increment (or hold alt to decrement) using the Numpad (make sure NumLock is on).\nNumpad 0 resets the matrix.");
+                ui.tooltip_text("These numbers represent the rotation matrix of the component being placed (same as in XML).\nYou can also increment (or hold Alt to decrement) using the Numpad (make sure NumLock is on).\nNumpad 0 resets the matrix.");
             }
 
             let mut next = unsafe { (*tr).rotation_mat3i_cur };
