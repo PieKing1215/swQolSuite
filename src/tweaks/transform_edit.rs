@@ -1,3 +1,5 @@
+use std::arch::asm;
+
 use anyhow::Context;
 use hudhook::imgui::Key;
 use memory_rs::{
@@ -10,7 +12,8 @@ use super::{InjectAt, MemoryRegionExt, Tweak, TweakConfig};
 
 #[repr(C)]
 struct Transform {
-    _unimportant: [u8; 0x9C],
+    _unimportant: [u8; 0x78],
+    rotation_mat3i_prev: [i32; 9],
     rotation_mat3i_cur: [i32; 9],
     rotation_mat3f_cur: [f32; 9],
 }
@@ -28,6 +31,7 @@ pub struct TransformEditTweak {
     _editor_destructor_detour: GenericDetour<EditorDestructorFn>,
     disable_quaternion_slerp: bool,
     disable_quaternion_slerp_injection: Injection,
+    safety_check_inject: Injection,
 }
 
 impl TransformEditTweak {
@@ -49,6 +53,7 @@ impl TransformEditTweak {
             #[allow(clippy::cast_precision_loss)]
             unsafe {
                 (*tr).rotation_mat3i_cur = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+                (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
                 (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
                 self.check_orthonormal(&(*tr).rotation_mat3i_cur);
                 Self::force_update_quaternion();
@@ -70,6 +75,7 @@ impl TweakConfig for TransformEditTweak {
 }
 
 impl Tweak for TransformEditTweak {
+    #[allow(clippy::too_many_lines)]
     fn new(builder: &mut super::TweakBuilder) -> anyhow::Result<Self>
     where
         Self: Sized,
@@ -169,6 +175,36 @@ impl Tweak for TransformEditTweak {
             InjectAt::End,
         ).context("Error finding quaternion slerp copy addr")?;
 
+        // EAX here ends up being an increment count for a loop
+        // but some matrices cause it to calculate 0 so the loop hangs
+        #[rustfmt::skip]
+        let memory_pattern = generate_aob_pattern![
+            0x41, 0x03, 0xc6,       // ADD        EAX,R14D
+            0x8b, 0x4d, 0x18,       // MOV        ECX,dword ptr [RBP + 0x18]
+            0x41, 0x0f, 0xaf, 0xc9, // IMUL       ECX,R9D
+            0x03, 0xc1,             // ADD        EAX,ECX
+            0x99,                   // CDQ
+            0x33, 0xc2,             // XOR        EAX,EDX
+            0x2b, 0xc2              // SUB        EAX,EDX
+        ];
+
+        let mut safety_check_inject = builder
+            .injection(
+                &memory_pattern,
+                {
+                    // CALL safety_check
+                    let mut inject = vec![0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0xeb, 0x08];
+                    inject.extend_from_slice(&(safety_check as usize).to_le_bytes());
+                    // pad with NOP
+                    inject.resize(memory_pattern.size, 0x90);
+                    inject
+                },
+                InjectAt::Start,
+            )
+            .context("Error finding editor camera speed addr")?;
+
+        safety_check_inject.inject();
+
         unsafe {
             update_quaternion_detour.enable()?;
             editor_destructor_detour.enable()?;
@@ -179,6 +215,7 @@ impl Tweak for TransformEditTweak {
             _editor_destructor_detour: editor_destructor_detour,
             disable_quaternion_slerp: false,
             disable_quaternion_slerp_injection,
+            safety_check_inject,
         })
     }
 
@@ -227,6 +264,7 @@ impl Tweak for TransformEditTweak {
                 #[allow(clippy::cast_precision_loss)]
                 unsafe {
                     (*tr).rotation_mat3i_cur = next;
+                    (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
                     (*tr).rotation_mat3f_cur = next.map(|i| i as _);
                 }
             }
@@ -242,6 +280,7 @@ impl Tweak for TransformEditTweak {
                 unsafe {
                     (*tr).rotation_mat3i_cur[idx as usize] =
                         (*tr).rotation_mat3i_cur[idx as usize].saturating_add(add);
+                    (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
                     (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
                     self.check_orthonormal(&(*tr).rotation_mat3i_cur);
                 }
@@ -299,4 +338,26 @@ fn is_orthonormal(matrix: &[i32; 9]) -> bool {
     let is_det_positive = det(matrix) >= 0;
 
     is_normalized && is_orthogonal && is_det_positive
+}
+
+#[no_mangle]
+extern "stdcall" fn safety_check() {
+    unsafe {
+        // safety check that EAX is at least 1
+        asm!(
+            // original
+            "ADD        EAX,R14D",
+            "MOV        ECX,dword ptr [RBP + 0x18]",
+            "IMUL       ECX,R9D",
+            "ADD        EAX,ECX",
+            "CDQ",
+            "XOR        EAX,EDX",
+            "SUB        EAX,EDX",
+            // if eax == 0 { eax = 1; }
+            "TEST       EAX,EAX",
+            "MOV        EDX,1", // edx is overwritten immediately after so safe to use
+            "CMOVZ      EAX,EDX",
+            options(nostack),
+        );
+    }
 }
