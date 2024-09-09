@@ -44,6 +44,18 @@ impl TransformEditTweak {
         }
     }
 
+    fn reset_transform(&mut self) {
+        if let Some(tr) = unsafe { TRANSFORM } {
+            #[allow(clippy::cast_precision_loss)]
+            unsafe {
+                (*tr).rotation_mat3i_cur = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+                (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
+                self.check_orthonormal(&(*tr).rotation_mat3i_cur);
+                Self::force_update_quaternion();
+            }
+        }
+    }
+
     fn force_update_quaternion() {
         unsafe {
             if let (Some(update_quaternion), Some(tr)) = (UPDATE_QUATERNION_FN, TRANSFORM) {
@@ -166,30 +178,46 @@ impl Tweak for TransformEditTweak {
         })
     }
 
+    fn uninit(&mut self) -> anyhow::Result<()> {
+        self.reset_transform();
+
+        Ok(())
+    }
+
     fn render(&mut self, ui: &hudhook::imgui::Ui) {
         if let Some(tr) = unsafe { TRANSFORM } {
             ui.text("Editor placement transform");
+            if ui.is_item_hovered() {
+                ui.tooltip_text("These numbers represent the rotation matrix of the component being placed (same as in xml).\nYou can also increment (or hold alt to decrement) using the Numpad (make sure NumLock is on).\nNumpad 0 resets the matrix.");
+            }
+
             let mut next = unsafe { (*tr).rotation_mat3i_cur };
             let mut changed = false;
             #[allow(clippy::identity_op)]
             for r in 0..3 {
                 ui.set_next_item_width(80.0);
-                changed = changed
-                    || ui
-                        .input_int(format!("{}", r * 3 + 1), &mut next[r * 3 + 0])
-                        .build();
+                if ui
+                    .input_int(format!("{}", r * 3 + 1), &mut next[r * 3 + 0])
+                    .build()
+                {
+                    changed = true;
+                }
                 ui.same_line();
                 ui.set_next_item_width(80.0);
-                changed = changed
-                    || ui
-                        .input_int(format!("{}", r * 3 + 2), &mut next[r * 3 + 1])
-                        .build();
+                if ui
+                    .input_int(format!("{}", r * 3 + 2), &mut next[r * 3 + 1])
+                    .build()
+                {
+                    changed = true;
+                }
                 ui.same_line();
                 ui.set_next_item_width(80.0);
-                changed = changed
-                    || ui
-                        .input_int(format!("{}", r * 3 + 3), &mut next[r * 3 + 2])
-                        .build();
+                if ui
+                    .input_int(format!("{}", r * 3 + 3), &mut next[r * 3 + 2])
+                    .build()
+                {
+                    changed = true;
+                }
             }
             if changed {
                 #[allow(clippy::cast_precision_loss)]
@@ -218,12 +246,6 @@ impl Tweak for TransformEditTweak {
 
         let add = if ui.is_key_down(Key::LeftAlt) { -1 } else { 1 };
 
-        // for (k, d) in ui.io().keys_down.iter().enumerate() {
-        //     if *d {
-        //         ui.text(format!("{k}"));
-        //     }
-        // }
-
         if ui.is_key_pressed(Key::Keypad7) {
             update(0, add);
         } else if ui.is_key_pressed(Key::Keypad8) {
@@ -243,15 +265,7 @@ impl Tweak for TransformEditTweak {
         } else if ui.is_key_pressed(Key::Keypad3) {
             update(8, add);
         } else if ui.is_key_pressed(Key::Keypad0) {
-            if let Some(tr) = unsafe { TRANSFORM } {
-                #[allow(clippy::cast_precision_loss)]
-                unsafe {
-                    (*tr).rotation_mat3i_cur = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-                    (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
-                    self.check_orthonormal(&(*tr).rotation_mat3i_cur);
-                    Self::force_update_quaternion();
-                }
-            }
+            self.reset_transform();
         }
     }
 }
