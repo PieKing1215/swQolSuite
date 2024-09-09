@@ -21,6 +21,7 @@ use tweaks::fullscreen::FullscreenTweak;
 use tweaks::fast_loading_animations::FastLoadingAnimationsTweak;
 use tweaks::map_lag::MapLagTweak;
 use tweaks::multithreaded_loading::MultithreadedLoadingTweak;
+use tweaks::transform_edit::TransformEditTweak;
 use tweaks::{Tweak, TweakWrapper};
 use windows::Win32::Foundation::HINSTANCE;
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
@@ -86,6 +87,7 @@ impl MainHud {
                 this.add_tweak::<MultithreadedLoadingTweak>(&process.region);
                 this.add_tweak::<FullscreenTweak>(&process.region);
                 this.add_tweak::<DevModeTweak>(&process.region);
+                this.add_tweak::<TransformEditTweak>(&process.region);
             },
             Err(err) => this.errors.push(err),
         }

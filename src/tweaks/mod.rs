@@ -19,6 +19,7 @@ pub mod fast_loading_animations;
 pub mod map_lag;
 pub mod settings;
 pub mod multithreaded_loading;
+pub mod transform_edit;
 
 pub trait Tweak {
     fn new(builder: &mut TweakBuilder) -> anyhow::Result<Self>
