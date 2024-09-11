@@ -311,7 +311,6 @@ impl Tweak for TransformEditTweak {
             self.reset_transform();
         }
 
-        
         if let Some(tr) = unsafe { TRANSFORM } {
             unsafe {
                 self.check_orthonormal(&(*tr).rotation_mat3i_cur);
