@@ -100,7 +100,7 @@ impl Tweak for TransformEditTweak {
             let memory_pattern = generate_aob_pattern![
                 0x40, 0x53,                                                // PUSH       RBX
                 0x48, 0x81, 0xec, 0x80, 0x00, 0x00, 0x00,                  // SUB        RSP,0x80
-                0x48, 0x8b, 0x05, 0x00, 0x2f, 0x4c, 0x00,                  // MOV        RAX,qword ptr [DAT_140c40010]                    = 00002B992DDFA232h
+                0x48, 0x8b, 0x05, _, _, _, _,                              // MOV        RAX,qword ptr _
                 0x48, 0x33, 0xc4,                                          // XOR        RAX,RSP
                 0x48, 0x89, 0x44, 0x24, 0x70,                              // MOV        qword ptr [RSP + local_18],RAX
                 0x48, 0x8b, 0xd9,                                          // MOV        RBX,transform
@@ -110,7 +110,7 @@ impl Tweak for TransformEditTweak {
             let update_quaternion_fn_addr = builder
                 .region
                 .scan_aob_single(&memory_pattern)
-                .context("Error finding dev mode addr")?;
+                .context("Error finding update_quaternion addr")?;
 
             let det = GenericDetour::new(
                 std::mem::transmute::<usize, UpdateQuaternionFn>(update_quaternion_fn_addr),
@@ -149,7 +149,7 @@ impl Tweak for TransformEditTweak {
             let editor_destructor_fn_addr = builder
                 .region
                 .scan_aob_single(&memory_pattern)
-                .context("Error finding dev mode addr")?;
+                .context("Error finding editor_destructor addr")?;
 
             let det = GenericDetour::new(
                 std::mem::transmute::<usize, EditorDestructorFn>(editor_destructor_fn_addr),
@@ -309,6 +309,13 @@ impl Tweak for TransformEditTweak {
             update(8, add);
         } else if ui.is_key_pressed(Key::Keypad0) {
             self.reset_transform();
+        }
+
+        
+        if let Some(tr) = unsafe { TRANSFORM } {
+            unsafe {
+                self.check_orthonormal(&(*tr).rotation_mat3i_cur);
+            }
         }
     }
 }
