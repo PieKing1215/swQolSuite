@@ -81,7 +81,8 @@ impl Tweak for TransformEditTweak {
         Self: Sized,
     {
         let update_quaternion_detour = unsafe {
-            extern "fastcall" fn hook(tr: *mut Transform) {
+            #[no_mangle]
+            extern "fastcall" fn update_quaternion_hook(tr: *mut Transform) {
                 unsafe {
                     let update_quaternion: UpdateQuaternionFn =
                         UPDATE_QUATERNION_FN.unwrap_unchecked();
@@ -114,7 +115,7 @@ impl Tweak for TransformEditTweak {
 
             let det = GenericDetour::new(
                 std::mem::transmute::<usize, UpdateQuaternionFn>(update_quaternion_fn_addr),
-                hook,
+                update_quaternion_hook,
             )?;
             UPDATE_QUATERNION_FN = Some(std::mem::transmute::<&(), UpdateQuaternionFn>(
                 det.trampoline(),
@@ -124,7 +125,8 @@ impl Tweak for TransformEditTweak {
         };
 
         let editor_destructor_detour = unsafe {
-            extern "fastcall" fn hook(editor: *mut (), param_2: *mut ()) {
+            #[no_mangle]
+            extern "fastcall" fn editor_destructor_hook(editor: *mut (), param_2: *mut ()) {
                 unsafe {
                     TRANSFORM = None;
                     let editor_destructor: EditorDestructorFn =
@@ -153,7 +155,7 @@ impl Tweak for TransformEditTweak {
 
             let det = GenericDetour::new(
                 std::mem::transmute::<usize, EditorDestructorFn>(editor_destructor_fn_addr),
-                hook,
+                editor_destructor_hook,
             )?;
             EDITOR_DESTRUCTOR_FN = Some(std::mem::transmute::<&(), EditorDestructorFn>(
                 det.trampoline(),
@@ -201,7 +203,7 @@ impl Tweak for TransformEditTweak {
                 },
                 InjectAt::Start,
             )
-            .context("Error finding editor camera speed addr")?;
+            .context("Error finding safety check addr")?;
 
         safety_check_inject.inject();
 
