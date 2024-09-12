@@ -352,18 +352,6 @@ extern "stdcall" fn safety_check() {
         // safety check that increments are at least 1
         // EDX is overwritten immediately after so safe to use for work
         asm!(
-            // if [RSP + 0x78] == 0 { [RSP + 0x78] = 1 }
-            "MOV        EAX,[RSP + 0x8 + 0x78]",
-            "TEST       EAX,EAX",
-            "MOV        EDX,1",
-            "CMOVZ      EAX,EDX",
-            "MOV        [RSP + 0x8 + 0x78],EAX",
-            // if [RBP + -0x68] == 0 { [RBP + -0x68] = 1 }
-            "MOV        EAX,[RBP + -0x68]",
-            "TEST       EAX,EAX",
-            "MOV        EDX,1",
-            "CMOVZ      EAX,EDX",
-            "MOV        [RBP + -0x68],EAX",
             // original
             "ADD        EAX,R14D",
             "MOV        ECX,dword ptr [RBP + 0x18]",
@@ -376,6 +364,22 @@ extern "stdcall" fn safety_check() {
             "TEST       EAX,EAX",
             "MOV        EDX,1",
             "CMOVZ      EAX,EDX",
+            // save RAX
+            "PUSH       RAX",
+            // if [RSP + 0x78] == 0 { [RSP + 0x78] = 1 }
+            "MOV        EAX,[RSP + 0x8 + 0x8 + 0x78]",
+            "TEST       EAX,EAX",
+            "MOV        EDX,1",
+            "CMOVZ      EAX,EDX",
+            "MOV        [RSP + 0x8 + 0x8 + 0x78],EAX",
+            // if [RBP + -0x68] == 0 { [RBP + -0x68] = 1 }
+            "MOV        EAX,[RBP + -0x68]",
+            "TEST       EAX,EAX",
+            "MOV        EDX,1",
+            "CMOVZ      EAX,EDX",
+            "MOV        [RBP + -0x68],EAX",
+            // restore RAX
+            "POP        RAX",
             options(nostack),
         );
     }
