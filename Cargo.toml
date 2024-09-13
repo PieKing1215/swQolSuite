@@ -30,3 +30,4 @@ itertools = "0.13"
 figment = { version = "0.10", features = ["toml"] }
 toml = "0.8"
 serde = "1.0"
+memory-layout = "0.3"

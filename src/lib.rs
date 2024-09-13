@@ -4,6 +4,7 @@
 
 #[allow(clippy::module_name_repetitions)]
 pub mod tweaks;
+pub mod types;
 
 use std::collections::BTreeMap;
 

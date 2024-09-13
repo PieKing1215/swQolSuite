@@ -1,4 +1,7 @@
-use std::{arch::asm, sync::atomic::{AtomicBool, Ordering}};
+use std::{
+    arch::asm,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 use anyhow::Context;
 use hudhook::imgui::Key;
@@ -8,22 +11,16 @@ use memory_rs::{
 };
 use retour::GenericDetour;
 
+use crate::types::{ComponentBase, FlipParent, GameStateEditor, Transform};
+
 use super::{Defaults, InjectAt, MemoryRegionExt, Tweak, TweakConfig};
 
 const SHIFT_COPY_TRANSFORM_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 
-#[repr(C)]
-struct Transform {
-    _unimportant: [u8; 0x78],
-    rotation_mat3i_prev: [i32; 9],
-    rotation_mat3i_cur: [i32; 9],
-    rotation_mat3f_cur: [f32; 9],
-}
-
 type UpdateQuaternionFn = extern "fastcall" fn(*mut Transform);
-type EditorDestructorFn = extern "fastcall" fn(*mut (), *mut ());
-type SetPlacingComponentFn = extern "fastcall" fn(*mut (), *mut ());
-type SetFlipFn = extern "fastcall" fn(*mut (), u8);
+type EditorDestructorFn = extern "fastcall" fn(*mut GameStateEditor, *mut ());
+type SetPlacingComponentFn = extern "fastcall" fn(*mut GameStateEditor, *mut ());
+type SetFlipFn = extern "fastcall" fn(*mut FlipParent, u8);
 
 static mut UPDATE_QUATERNION_FN: Option<UpdateQuaternionFn> = None;
 static mut EDITOR_DESTRUCTOR_FN: Option<EditorDestructorFn> = None;
@@ -134,7 +131,10 @@ impl Tweak for TransformEditTweak {
 
         let editor_destructor_detour = unsafe {
             #[no_mangle]
-            extern "fastcall" fn editor_destructor_hook(editor: *mut (), param_2: *mut ()) {
+            extern "fastcall" fn editor_destructor_hook(
+                editor: *mut GameStateEditor,
+                param_2: *mut (),
+            ) {
                 unsafe {
                     TRANSFORM = None;
                     let editor_destructor: EditorDestructorFn =
@@ -224,13 +224,14 @@ impl Tweak for TransformEditTweak {
             0x48, 0x8b, 0x4c, 0x24, 0x68 // MOV        RCX,qword ptr [RSP + 0x68]
         ];
 
-        let mut hook_ctrl_click_injection = builder
+        #[rustfmt::skip]
+        let hook_ctrl_click_injection = builder
             .injection(
                 &memory_pattern,
                 {
-                    // CALL safety_check
+                    // CALL hook_ctrl_click
                     let mut inject = vec![
-                        0x48, 0x8b, 0xce, // MOV        RCX,RSI
+                        0x48, 0x8b, 0xce,                               // MOV        RCX,RSI
                         0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0xeb, 0x08, // start of long absolute JMP
                     ];
                     inject.extend_from_slice(&(hook_ctrl_click as usize).to_le_bytes()); // JMP target
@@ -243,11 +244,16 @@ impl Tweak for TransformEditTweak {
             .context("Error finding ctrl click addr")?;
 
         unsafe {
-            let set_placing_component_fn_addr = (hook_ctrl_click_injection.entry_point + memory_pattern.size - 5).wrapping_add_signed(
-                *((hook_ctrl_click_injection.entry_point + memory_pattern.size - 5 - 4) as *const i32) as isize,
-            );
+            let set_placing_component_fn_addr =
+                (hook_ctrl_click_injection.entry_point + memory_pattern.size - 5)
+                    .wrapping_add_signed(
+                        *((hook_ctrl_click_injection.entry_point + memory_pattern.size - 5 - 4)
+                            as *const i32) as isize,
+                    );
 
-            SET_PLACING_COMPONENT_FN = Some(std::mem::transmute::<usize, SetPlacingComponentFn>(set_placing_component_fn_addr));
+            SET_PLACING_COMPONENT_FN = Some(std::mem::transmute::<usize, SetPlacingComponentFn>(
+                set_placing_component_fn_addr,
+            ));
         }
 
         builder
@@ -343,8 +349,6 @@ impl Tweak for TransformEditTweak {
             }
 
             self.check_orthonormal(&next);
-
-            ui.text(format!("{} {}", self.disable_quaternion_slerp, is_orthonormal(&next)));
         }
     }
 
@@ -395,7 +399,6 @@ impl Tweak for TransformEditTweak {
         if FORCE_UPDATE_NEXT_TICK.load(Ordering::Acquire) {
             FORCE_UPDATE_NEXT_TICK.store(false, Ordering::Release);
 
-            
             if let Some(tr) = unsafe { TRANSFORM } {
                 #[allow(clippy::cast_precision_loss)]
                 unsafe {
@@ -480,8 +483,8 @@ extern "stdcall" fn safety_check() {
 #[no_mangle]
 extern "stdcall" fn hook_ctrl_click() {
     unsafe {
-        let editor: *mut ();
-        let component: *mut ();
+        let editor: *mut GameStateEditor;
+        let component: *mut ComponentBase;
         asm!(
             // original
             // "MOV        RDX,qword ptr [RDX + 0x58]", // don't want these lines since we want to have the reference to RDX before
@@ -493,39 +496,47 @@ extern "stdcall" fn hook_ctrl_click() {
             options(nostack),
         );
 
-        let component_type = (component as usize + 0x58) as *mut *mut *mut ();
-        let set_placing_component: SetPlacingComponentFn = SET_PLACING_COMPONENT_FN.unwrap_unchecked();
-        set_placing_component(editor, **component_type);
+        #[allow(clippy::ptr_as_ptr)]
+        let component_type = (*component).flip_type as *mut *mut ();
+        let set_placing_component: SetPlacingComponentFn =
+            SET_PLACING_COMPONENT_FN.unwrap_unchecked();
+        set_placing_component(editor, *component_type);
 
         // if shift held, make eyedrop copy transform
-        let tr = (editor as usize + 0x1420) as *mut Transform;
+        let tr = &mut (*editor).place_transform;
         if SHIFT_HELD.load(Ordering::Acquire) {
-            let flip = (*((component as usize + 0x58) as *mut usize) + 0x40) as *mut u8;
-            let matrix = (component as usize + 0x30) as *mut [i32; 9];
-            (*tr).rotation_mat3i_cur = *matrix;
+            let flip = ((*component).flip_type as usize + 0x40) as *mut u8;
+            let matrix = &mut (*component).matrix;
+            tr.rotation_mat3i_cur = *matrix;
             // (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
             // (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
             // (*tr).rotation_mat3i_cur = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-            
+
             if let Some(update_quaternion) = UPDATE_QUATERNION_FN {
                 update_quaternion(tr);
             }
 
             if let Some(set_flip) = SET_FLIP_FN {
-                let flip_parent = (editor as usize + 0x1580) as *mut *mut ();
-                let cur_flip = *((flip_parent as usize + 0x1e8) as *mut u8);
-                set_flip(flip_parent.cast(), *flip);
+                let flip_parent = &mut (*editor).flip_parent;
+                let cur_flip = flip_parent.cur_flip;
+                set_flip(flip_parent, *flip);
                 if cur_flip & 0x1 != (*flip) & 0x1 {
-                    let unk_flip_type = *((editor as usize + 0x1578) as *mut usize);
-                    *((editor as usize + 0x1578) as *mut *mut ()) = *((unk_flip_type + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x1) * 0x8) as usize) as *mut *mut ());
+                    let unk_flip_type = (*editor).placing_flip_type as usize;
+                    (*editor).placing_flip_type = *((unk_flip_type
+                        + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x1) * 0x8) as usize)
+                        as *mut *mut ());
                 }
                 if cur_flip & 0x2 != (*flip) & 0x2 {
-                    let unk_flip_type = *((editor as usize + 0x1578) as *mut usize);
-                    *((editor as usize + 0x1578) as *mut *mut ()) = *((unk_flip_type + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x2) * 0x8) as usize) as *mut *mut ());
+                    let unk_flip_type = (*editor).placing_flip_type as usize;
+                    (*editor).placing_flip_type = *((unk_flip_type
+                        + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x2) * 0x8) as usize)
+                        as *mut *mut ());
                 }
                 if cur_flip & 0x4 != (*flip) & 0x4 {
-                    let unk_flip_type = *((editor as usize + 0x1578) as *mut usize);
-                    *((editor as usize + 0x1578) as *mut *mut ()) = *((unk_flip_type + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x4) * 0x8) as usize) as *mut *mut ());
+                    let unk_flip_type = (*editor).placing_flip_type as usize;
+                    (*editor).placing_flip_type = *((unk_flip_type
+                        + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x4) * 0x8) as usize)
+                        as *mut *mut ());
                 }
             }
 
