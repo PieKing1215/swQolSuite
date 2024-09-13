@@ -1,4 +1,4 @@
-use std::arch::asm;
+use std::{arch::asm, sync::atomic::{AtomicBool, Ordering}};
 
 use anyhow::Context;
 use hudhook::imgui::Key;
@@ -8,7 +8,9 @@ use memory_rs::{
 };
 use retour::GenericDetour;
 
-use super::{InjectAt, MemoryRegionExt, Tweak, TweakConfig};
+use super::{Defaults, InjectAt, MemoryRegionExt, Tweak, TweakConfig};
+
+const SHIFT_COPY_TRANSFORM_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 
 #[repr(C)]
 struct Transform {
@@ -20,11 +22,17 @@ struct Transform {
 
 type UpdateQuaternionFn = extern "fastcall" fn(*mut Transform);
 type EditorDestructorFn = extern "fastcall" fn(*mut (), *mut ());
+type SetPlacingComponentFn = extern "fastcall" fn(*mut (), *mut ());
+type SetFlipFn = extern "fastcall" fn(*mut (), u8);
 
 static mut UPDATE_QUATERNION_FN: Option<UpdateQuaternionFn> = None;
 static mut EDITOR_DESTRUCTOR_FN: Option<EditorDestructorFn> = None;
+static mut SET_PLACING_COMPONENT_FN: Option<SetPlacingComponentFn> = None;
+static mut SET_FLIP_FN: Option<SetFlipFn> = None;
 
 static mut TRANSFORM: Option<*mut Transform> = None;
+static SHIFT_HELD: AtomicBool = AtomicBool::new(false);
+static FORCE_UPDATE_NEXT_TICK: AtomicBool = AtomicBool::new(false);
 
 pub struct TransformEditTweak {
     _update_quaternion_detour: GenericDetour<UpdateQuaternionFn>,
@@ -207,6 +215,69 @@ impl Tweak for TransformEditTweak {
 
         safety_check_inject.inject();
 
+        #[rustfmt::skip]
+        let memory_pattern = generate_aob_pattern![
+            0x48, 0x8b, 0x52, 0x58,      // MOV        RDX,qword ptr [RDX + 0x58]
+            0x48, 0x8b, 0x12,            // MOV        RDX,qword ptr [RDX]
+            0x48, 0x8b, 0xce,            // MOV        RCX,RSI
+            0xe8, _, _, _, _,            // CALL       set_placing_component
+            0x48, 0x8b, 0x4c, 0x24, 0x68 // MOV        RCX,qword ptr [RSP + 0x68]
+        ];
+
+        let mut hook_ctrl_click_injection = builder
+            .injection(
+                &memory_pattern,
+                {
+                    // CALL safety_check
+                    let mut inject = vec![
+                        0x48, 0x8b, 0xce, // MOV        RCX,RSI
+                        0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0xeb, 0x08, // start of long absolute JMP
+                    ];
+                    inject.extend_from_slice(&(hook_ctrl_click as usize).to_le_bytes()); // JMP target
+                    // pad with NOP
+                    inject.resize(memory_pattern.size, 0x90);
+                    inject
+                },
+                InjectAt::Start,
+            )
+            .context("Error finding ctrl click addr")?;
+
+        unsafe {
+            let set_placing_component_fn_addr = (hook_ctrl_click_injection.entry_point + memory_pattern.size - 5).wrapping_add_signed(
+                *((hook_ctrl_click_injection.entry_point + memory_pattern.size - 5 - 4) as *const i32) as isize,
+            );
+
+            SET_PLACING_COMPONENT_FN = Some(std::mem::transmute::<usize, SetPlacingComponentFn>(set_placing_component_fn_addr));
+        }
+
+        builder
+            .toggle("Shift Copies Transform", SHIFT_COPY_TRANSFORM_DEFAULTS)
+            .tooltip("If enabled, holding Shift while using Ctrl+Click to eyedrop component will copy the component's transform.")
+            // .config_key("shift_copies_transform")
+            .injection(hook_ctrl_click_injection, false)
+            .build()?;
+
+        // set_flip function
+        #[rustfmt::skip]
+        let memory_pattern = generate_aob_pattern![
+            0x48, 0x89, 0x5c, 0x24, 0x08,            // MOV        qword ptr [RSP + 0x8],RBX
+            0x48, 0x89, 0x6c, 0x24, 0x10,            // MOV        qword ptr [RSP + 0x10],RBP
+            0x48, 0x89, 0x74, 0x24, 0x18,            // MOV        qword ptr [RSP + 0x18],RSI
+            0x57,                                    // PUSH       RDI
+            0x41, 0x56,                              // PUSH       R14
+            0x41, 0x57,                              // PUSH       R15
+            0x48, 0x83, 0xec, 0x20,                  // SUB        RSP,0x20
+            0x0f, 0xb6, 0x81, 0xe8, 0x01, 0x00, 0x00 // MOVZX      EAX,byte ptr [RCX + 0x1e8]
+        ];
+        let set_flip_fn_addr = builder
+            .region
+            .scan_aob_single(&memory_pattern)
+            .context("Error finding set_flip addr")?;
+
+        unsafe {
+            SET_FLIP_FN = Some(std::mem::transmute::<usize, SetFlipFn>(set_flip_fn_addr));
+        }
+
         unsafe {
             update_quaternion_detour.enable()?;
             editor_destructor_detour.enable()?;
@@ -272,6 +343,8 @@ impl Tweak for TransformEditTweak {
             }
 
             self.check_orthonormal(&next);
+
+            ui.text(format!("{} {}", self.disable_quaternion_slerp, is_orthonormal(&next)));
         }
     }
 
@@ -318,6 +391,23 @@ impl Tweak for TransformEditTweak {
                 self.check_orthonormal(&(*tr).rotation_mat3i_cur);
             }
         }
+
+        if FORCE_UPDATE_NEXT_TICK.load(Ordering::Acquire) {
+            FORCE_UPDATE_NEXT_TICK.store(false, Ordering::Release);
+
+            
+            if let Some(tr) = unsafe { TRANSFORM } {
+                #[allow(clippy::cast_precision_loss)]
+                unsafe {
+                    (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
+                    (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
+                    self.check_orthonormal(&(*tr).rotation_mat3i_cur);
+                }
+            }
+            Self::force_update_quaternion();
+        }
+
+        SHIFT_HELD.store(ui.is_key_down(Key::LeftShift), Ordering::Release);
     }
 }
 
@@ -382,6 +472,71 @@ extern "stdcall" fn safety_check() {
             "MOV        [RBP + -0x68],EAX",
             // restore RAX
             "POP        RAX",
+            options(nostack),
+        );
+    }
+}
+
+#[no_mangle]
+extern "stdcall" fn hook_ctrl_click() {
+    unsafe {
+        let editor: *mut ();
+        let component: *mut ();
+        asm!(
+            // original
+            // "MOV        RDX,qword ptr [RDX + 0x58]", // don't want these lines since we want to have the reference to RDX before
+            // "MOV        RDX,qword ptr [RDX]",        // |
+            // "MOV        RCX,RSI",                    // handled outside
+            "",
+            out("rcx") editor,
+            out("rdx") component,
+            options(nostack),
+        );
+
+        let component_type = (component as usize + 0x58) as *mut *mut *mut ();
+        let set_placing_component: SetPlacingComponentFn = SET_PLACING_COMPONENT_FN.unwrap_unchecked();
+        set_placing_component(editor, **component_type);
+
+        // if shift held, make eyedrop copy transform
+        let tr = (editor as usize + 0x1420) as *mut Transform;
+        if SHIFT_HELD.load(Ordering::Acquire) {
+            let flip = (*((component as usize + 0x58) as *mut usize) + 0x40) as *mut u8;
+            let matrix = (component as usize + 0x30) as *mut [i32; 9];
+            (*tr).rotation_mat3i_cur = *matrix;
+            // (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
+            // (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
+            // (*tr).rotation_mat3i_cur = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+            
+            if let Some(update_quaternion) = UPDATE_QUATERNION_FN {
+                update_quaternion(tr);
+            }
+
+            if let Some(set_flip) = SET_FLIP_FN {
+                let flip_parent = (editor as usize + 0x1580) as *mut *mut ();
+                let cur_flip = *((flip_parent as usize + 0x1e8) as *mut u8);
+                set_flip(flip_parent.cast(), *flip);
+                if cur_flip & 0x1 != (*flip) & 0x1 {
+                    let unk_flip_type = *((editor as usize + 0x1578) as *mut usize);
+                    *((editor as usize + 0x1578) as *mut *mut ()) = *((unk_flip_type + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x1) * 0x8) as usize) as *mut *mut ());
+                }
+                if cur_flip & 0x2 != (*flip) & 0x2 {
+                    let unk_flip_type = *((editor as usize + 0x1578) as *mut usize);
+                    *((editor as usize + 0x1578) as *mut *mut ()) = *((unk_flip_type + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x2) * 0x8) as usize) as *mut *mut ());
+                }
+                if cur_flip & 0x4 != (*flip) & 0x4 {
+                    let unk_flip_type = *((editor as usize + 0x1578) as *mut usize);
+                    *((editor as usize + 0x1578) as *mut *mut ()) = *((unk_flip_type + ((*((unk_flip_type + 0x40) as *mut u8) ^ 0x4) * 0x8) as usize) as *mut *mut ());
+                }
+            }
+
+            if !is_orthonormal(&*matrix) {
+                FORCE_UPDATE_NEXT_TICK.store(true, Ordering::Release);
+            }
+        }
+
+        asm!(
+            // original
+            "MOV        RCX,qword ptr [RSP + 0x28 + 0x8 + 0x8 + 0x8 + 0x8 + 0x8 + 0x68]",
             options(nostack),
         );
     }
