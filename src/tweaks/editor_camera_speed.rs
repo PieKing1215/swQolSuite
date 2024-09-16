@@ -23,9 +23,6 @@ const DEFAULT_WHEEL_MULTIPLIER: f32 = 1.1;
 
 static SPEED: AtomicF32 = AtomicF32::new(1.0);
 
-#[no_mangle]
-static mut jmp_back_addr: usize = 0x0;
-
 pub struct EditorCameraSpeedTweak {
     base_speed: f32,
     shift_multiplier: f32,
@@ -87,7 +84,7 @@ impl Tweak for EditorCameraSpeedTweak {
         })
     }
 
-    fn render(&mut self, ui: &hudhook::imgui::Ui) {
+    fn render(&mut self, ui: &hudhook::imgui::Ui) -> anyhow::Result<()> {
         ui.set_next_item_width(100.0);
         ui.slider("Camera Base Speed", 0.1, 4.0, &mut self.base_speed);
         if ui.is_item_hovered() {
@@ -130,9 +127,11 @@ impl Tweak for EditorCameraSpeedTweak {
 
         // ui.text(format!("{}", self.current_speed));
         // ui.text(format!("{}", self.current_wheel_multiplier));
+
+        Ok(())
     }
 
-    fn constant_render(&mut self, ui: &hudhook::imgui::Ui) {
+    fn constant_render(&mut self, ui: &hudhook::imgui::Ui) -> anyhow::Result<()> {
         // if ui.io().mouse_wheel != 0.0 {
         //     self.current_wheel_multiplier *= self.wheel_multiplier.powf(ui.io().mouse_wheel);
         // }
@@ -152,6 +151,8 @@ impl Tweak for EditorCameraSpeedTweak {
         }
 
         SPEED.store(self.current_speed, Ordering::Release);
+
+        Ok(())
     }
 
     fn reset_to_default(&mut self) {

@@ -35,9 +35,17 @@ pub trait Tweak {
         Ok(())
     }
 
-    fn render(&mut self, _ui: &hudhook::imgui::Ui) {}
+    fn render(&mut self, _ui: &hudhook::imgui::Ui) -> anyhow::Result<()> {
+        Ok(())
+    }
 
-    fn constant_render(&mut self, _ui: &hudhook::imgui::Ui) {}
+    fn render_category(&mut self, _ui: &hudhook::imgui::Ui, _category: Option<&str>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn constant_render(&mut self, _ui: &hudhook::imgui::Ui) -> anyhow::Result<()> {
+        Ok(())
+    }
 
     fn reset_to_default(&mut self) {}
     fn reset_to_vanilla(&mut self) {}
@@ -112,13 +120,17 @@ impl TweakWrapper {
         for t in &mut self.settings {
             t.render(ui)?;
         }
-        self.inner.render(ui);
+        self.inner.render(ui)?;
 
         Ok(())
     }
 
-    pub fn constant_render(&mut self, ui: &hudhook::imgui::Ui) {
-        self.inner.constant_render(ui);
+    pub fn render_category(&mut self, ui: &hudhook::imgui::Ui, category: Option<&str>) -> anyhow::Result<()> {
+        self.inner.render_category(ui, category)
+    }
+
+    pub fn constant_render(&mut self, ui: &hudhook::imgui::Ui) -> anyhow::Result<()> {
+        self.inner.constant_render(ui)
     }
 
     pub fn reset_to_default(&mut self) -> anyhow::Result<()> {

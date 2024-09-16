@@ -15,6 +15,7 @@ use crate::types::{ComponentBase, FlipParent, GameStateEditor, Transform};
 
 use super::{Defaults, InjectAt, MemoryRegionExt, Tweak, TweakConfig};
 
+const EDIT_TRANSFORM_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 const SHIFT_COPY_TRANSFORM_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 
 type UpdateQuaternionFn = extern "fastcall" fn(*mut Transform);
@@ -30,13 +31,12 @@ static mut SET_FLIP_FN: Option<SetFlipFn> = None;
 static mut TRANSFORM: Option<*mut Transform> = None;
 static SHIFT_HELD: AtomicBool = AtomicBool::new(false);
 static FORCE_UPDATE_NEXT_TICK: AtomicBool = AtomicBool::new(false);
+static DISABLE_NEXT_TICK: AtomicBool = AtomicBool::new(false);
 
 pub struct TransformEditTweak {
-    _update_quaternion_detour: GenericDetour<UpdateQuaternionFn>,
-    _editor_destructor_detour: GenericDetour<EditorDestructorFn>,
     disable_quaternion_slerp: bool,
     disable_quaternion_slerp_injection: Injection,
-    _safety_check_inject: Injection,
+    safety_check_inject: Injection,
 }
 
 impl TransformEditTweak {
@@ -46,8 +46,10 @@ impl TransformEditTweak {
             self.disable_quaternion_slerp = !self.disable_quaternion_slerp;
             if self.disable_quaternion_slerp {
                 self.disable_quaternion_slerp_injection.inject();
+                self.safety_check_inject.inject();
             } else {
                 self.disable_quaternion_slerp_injection.remove_injection();
+                self.safety_check_inject.remove_injection();
                 Self::force_update_quaternion();
             }
         }
@@ -85,6 +87,8 @@ impl Tweak for TransformEditTweak {
     where
         Self: Sized,
     {
+        builder.set_category(Some("Editor"));
+
         let update_quaternion_detour = unsafe {
             #[no_mangle]
             extern "fastcall" fn update_quaternion_hook(tr: *mut Transform) {
@@ -259,7 +263,7 @@ impl Tweak for TransformEditTweak {
         builder
             .toggle("Shift Copies Transform", SHIFT_COPY_TRANSFORM_DEFAULTS)
             .tooltip("If enabled, holding Shift while using Ctrl+Click to eyedrop component will copy the component's transform.")
-            // .config_key("shift_copies_transform")
+            .config_key("shift_copies_transform")
             .injection(hook_ctrl_click_injection, false)
             .build()?;
 
@@ -284,17 +288,24 @@ impl Tweak for TransformEditTweak {
             SET_FLIP_FN = Some(std::mem::transmute::<usize, SetFlipFn>(set_flip_fn_addr));
         }
 
-        unsafe {
-            update_quaternion_detour.enable()?;
-            editor_destructor_detour.enable()?;
-        }
+        builder
+            .toggle("Placement Transform Editing", EDIT_TRANSFORM_DEFAULTS)
+            .tooltip("If enabled, allows editing the placement transform.\nA grid of numbers allow you to edit the 3x3 rotation matrix of the component being placed (same as in xml).\nYou can also increment (or hold Alt to decrement) using Numpad 1-9 (make sure NumLock is on).\nNumpad 0 resets the matrix.\n(You may have to rotate a component in-editor once before it works)")
+            .config_key("placement_transform_editing")
+            .detour(update_quaternion_detour, false)
+            .detour(editor_destructor_detour, false)
+            .on_value_changed(|enabled| {
+                if !enabled {
+                    FORCE_UPDATE_NEXT_TICK.store(true, Ordering::Release);
+                    DISABLE_NEXT_TICK.store(true, Ordering::Release);
+                }
+            })
+            .build()?;
 
         Ok(Self {
-            _update_quaternion_detour: update_quaternion_detour,
-            _editor_destructor_detour: editor_destructor_detour,
             disable_quaternion_slerp: false,
             disable_quaternion_slerp_injection,
-            _safety_check_inject: safety_check_inject,
+            safety_check_inject,
         })
     }
 
@@ -304,55 +315,60 @@ impl Tweak for TransformEditTweak {
         Ok(())
     }
 
-    fn render(&mut self, ui: &hudhook::imgui::Ui) {
-        if let Some(tr) = unsafe { TRANSFORM } {
-            ui.text("Editor Placement Transform");
-            if ui.is_item_hovered() {
-                ui.tooltip_text("These numbers represent the rotation matrix of the component being placed (same as in XML).\nYou can also increment (or hold Alt to decrement) using the Numpad (make sure NumLock is on).\nNumpad 0 resets the matrix.");
+    fn render_category(&mut self, ui: &hudhook::imgui::Ui, category: Option<&str>) -> anyhow::Result<()> {
+        if category.is_none() {
+            if let Some(tr) = unsafe { TRANSFORM } {
+                ui.separator();
+                ui.text("Editor Placement Transform");
+                if ui.is_item_hovered() {
+                    ui.tooltip_text("These numbers represent the rotation matrix of the component being placed (same as in XML).\nYou can also increment (or hold Alt to decrement) using the Numpad (make sure NumLock is on).\nNumpad 0 resets the matrix.");
+                }
+    
+                let mut next = unsafe { (*tr).rotation_mat3i_cur };
+                let mut changed = false;
+                #[allow(clippy::identity_op)]
+                for r in 0..3 {
+                    ui.set_next_item_width(80.0);
+                    if ui
+                        .input_int(format!("{}", r * 3 + 1), &mut next[r * 3 + 0])
+                        .build()
+                    {
+                        changed = true;
+                    }
+                    ui.same_line();
+                    ui.set_next_item_width(80.0);
+                    if ui
+                        .input_int(format!("{}", r * 3 + 2), &mut next[r * 3 + 1])
+                        .build()
+                    {
+                        changed = true;
+                    }
+                    ui.same_line();
+                    ui.set_next_item_width(80.0);
+                    if ui
+                        .input_int(format!("{}", r * 3 + 3), &mut next[r * 3 + 2])
+                        .build()
+                    {
+                        changed = true;
+                    }
+                }
+                if changed {
+                    #[allow(clippy::cast_precision_loss)]
+                    unsafe {
+                        (*tr).rotation_mat3i_cur = next;
+                        (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
+                        (*tr).rotation_mat3f_cur = next.map(|i| i as _);
+                    }
+                }
+    
+                self.check_orthonormal(&next);
             }
-
-            let mut next = unsafe { (*tr).rotation_mat3i_cur };
-            let mut changed = false;
-            #[allow(clippy::identity_op)]
-            for r in 0..3 {
-                ui.set_next_item_width(80.0);
-                if ui
-                    .input_int(format!("{}", r * 3 + 1), &mut next[r * 3 + 0])
-                    .build()
-                {
-                    changed = true;
-                }
-                ui.same_line();
-                ui.set_next_item_width(80.0);
-                if ui
-                    .input_int(format!("{}", r * 3 + 2), &mut next[r * 3 + 1])
-                    .build()
-                {
-                    changed = true;
-                }
-                ui.same_line();
-                ui.set_next_item_width(80.0);
-                if ui
-                    .input_int(format!("{}", r * 3 + 3), &mut next[r * 3 + 2])
-                    .build()
-                {
-                    changed = true;
-                }
-            }
-            if changed {
-                #[allow(clippy::cast_precision_loss)]
-                unsafe {
-                    (*tr).rotation_mat3i_cur = next;
-                    (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
-                    (*tr).rotation_mat3f_cur = next.map(|i| i as _);
-                }
-            }
-
-            self.check_orthonormal(&next);
         }
+
+        Ok(())
     }
 
-    fn constant_render(&mut self, ui: &hudhook::imgui::Ui) {
+    fn constant_render(&mut self, ui: &hudhook::imgui::Ui) -> anyhow::Result<()> {
         let mut update = |idx: u8, add: i32| {
             if let Some(tr) = unsafe { TRANSFORM } {
                 #[allow(clippy::cast_precision_loss)]
@@ -410,7 +426,17 @@ impl Tweak for TransformEditTweak {
             Self::force_update_quaternion();
         }
 
+        if DISABLE_NEXT_TICK.load(Ordering::Acquire) {
+            DISABLE_NEXT_TICK.store(false, Ordering::Release);
+            self.reset_transform();
+            unsafe {
+                TRANSFORM = None;
+            }
+        }
+
         SHIFT_HELD.store(ui.is_key_down(Key::LeftShift), Ordering::Release);
+
+        Ok(())
     }
 }
 
@@ -507,10 +533,13 @@ extern "stdcall" fn hook_ctrl_click() {
         if SHIFT_HELD.load(Ordering::Acquire) {
             let flip = ((*component).flip_type as usize + 0x40) as *mut u8;
             let matrix = &mut (*component).matrix;
-            tr.rotation_mat3i_cur = *matrix;
-            // (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
-            // (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
-            // (*tr).rotation_mat3i_cur = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+            let ortho = is_orthonormal(&*matrix);
+            if ortho || TRANSFORM.is_some() {
+                tr.rotation_mat3i_cur = *matrix;
+                // (*tr).rotation_mat3i_prev = (*tr).rotation_mat3i_cur;
+                // (*tr).rotation_mat3f_cur = (*tr).rotation_mat3i_cur.map(|i| i as _);
+                // (*tr).rotation_mat3i_cur = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+            }
 
             if let Some(update_quaternion) = UPDATE_QUATERNION_FN {
                 update_quaternion(tr);

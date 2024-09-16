@@ -32,6 +32,7 @@ use windows::Win32::Foundation::HINSTANCE;
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 
 #[allow(clippy::missing_safety_doc)]
+#[allow(non_snake_case)]
 #[no_mangle]
 pub unsafe extern "stdcall" fn DllMain(hmodule: HINSTANCE, reason: u32, _: *mut std::ffi::c_void) {
     if reason == DLL_PROCESS_ATTACH {
@@ -215,7 +216,11 @@ impl ImguiRenderLoop for MainHud {
         style_padding.end();
 
         for (tw, _) in &mut self.tweaks {
-            tw.constant_render(ui);
+            
+            if let Err(e) = tw.constant_render(ui) {
+                self.errors.push(e);
+                self.show = true;
+            }
         }
 
         if !self.show {
@@ -296,26 +301,34 @@ impl ImguiRenderLoop for MainHud {
                 let categories = self
                     .tweaks
                     .iter_mut()
-                    .map(|(tw, _)| (tw.category().clone(), tw))
+                    .enumerate()
+                    .map(|(i, (tw, _))| (tw.category().clone(), i))
                     .into_group_map();
 
-                for (category, tweaks) in categories.into_iter().sorted_by(|a, b| {
+                for (category, mut tweak_indices) in categories.into_iter().sorted_by(|a, b| {
                     if a.0.is_none() || b.0.is_none() {
                         b.0.cmp(&a.0)
                     } else {
                         a.0.cmp(&b.0)
                     }
                 }) {
-                    let render = || {
-                        for tw in tweaks {
-                            if let Err(e) = tw.render(ui) {
+                    let mut render = || {
+                        for i in &mut tweak_indices {
+                            if let Err(e) = self.tweaks[*i].0.render(ui) {
+                                self.errors.push(e);
+                                self.show = true;
+                            }
+                        }
+
+                        for (tw, _) in &mut self.tweaks {
+                            if let Err(e) = tw.render_category(ui, category.as_deref()) {
                                 self.errors.push(e);
                                 self.show = true;
                             }
                         }
                     };
 
-                    if let Some(category) = category {
+                    if let Some(category) = &category {
                         if ui.collapsing_header(category, TreeNodeFlags::empty()) {
                             ui.indent_by(8.0);
                             render();

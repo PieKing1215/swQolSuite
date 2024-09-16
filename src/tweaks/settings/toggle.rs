@@ -28,6 +28,7 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
                 label: label.into(),
                 injections: vec![],
                 detours: vec![],
+                value_changed_listeners: vec![],
             },
         }
     }
@@ -65,6 +66,15 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
         self
     }
 
+    #[must_use]
+    pub fn on_value_changed(
+        mut self,
+        callback: impl FnMut(bool) + Send + Sync + 'static,
+    ) -> Self {
+        self.toggle.value_changed_listeners.push(Box::new(callback));
+        self
+    }
+
     pub fn build(self) -> anyhow::Result<()> {
         self.tweak_builder
             .add_setting(Setting::new(self.toggle, self.defaults, self.config_key))
@@ -76,6 +86,7 @@ pub struct Toggle {
     tooltip: String,
     injections: Vec<(Injection, bool)>,
     detours: Vec<(Box<dyn DetourUntyped + Send + Sync>, bool)>,
+    value_changed_listeners: Vec<Box<dyn FnMut(bool) + Send + Sync>>,
 }
 
 impl SettingImpl<bool> for Toggle {
@@ -112,6 +123,10 @@ impl SettingImpl<bool> for Toggle {
                     detour.disable()?;
                 }
             }
+        }
+
+        for listener in &mut self.value_changed_listeners {
+            listener(value);
         }
 
         Ok(())
