@@ -67,10 +67,7 @@ impl<'b, 'r> ToggleBuilder<'b, 'r> {
     }
 
     #[must_use]
-    pub fn on_value_changed(
-        mut self,
-        callback: impl FnMut(bool) + Send + Sync + 'static,
-    ) -> Self {
+    pub fn on_value_changed(mut self, callback: impl FnMut(bool) + Send + Sync + 'static) -> Self {
         self.toggle.value_changed_listeners.push(Box::new(callback));
         self
     }

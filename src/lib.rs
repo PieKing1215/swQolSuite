@@ -216,7 +216,6 @@ impl ImguiRenderLoop for MainHud {
         style_padding.end();
 
         for (tw, _) in &mut self.tweaks {
-            
             if let Err(e) = tw.constant_render(ui) {
                 self.errors.push(e);
                 self.show = true;

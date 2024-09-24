@@ -39,7 +39,11 @@ pub trait Tweak {
         Ok(())
     }
 
-    fn render_category(&mut self, _ui: &hudhook::imgui::Ui, _category: Option<&str>) -> anyhow::Result<()> {
+    fn render_category(
+        &mut self,
+        _ui: &hudhook::imgui::Ui,
+        _category: Option<&str>,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -125,7 +129,11 @@ impl TweakWrapper {
         Ok(())
     }
 
-    pub fn render_category(&mut self, ui: &hudhook::imgui::Ui, category: Option<&str>) -> anyhow::Result<()> {
+    pub fn render_category(
+        &mut self,
+        ui: &hudhook::imgui::Ui,
+        category: Option<&str>,
+    ) -> anyhow::Result<()> {
         self.inner.render_category(ui, category)
     }
 

@@ -315,7 +315,11 @@ impl Tweak for TransformEditTweak {
         Ok(())
     }
 
-    fn render_category(&mut self, ui: &hudhook::imgui::Ui, category: Option<&str>) -> anyhow::Result<()> {
+    fn render_category(
+        &mut self,
+        ui: &hudhook::imgui::Ui,
+        category: Option<&str>,
+    ) -> anyhow::Result<()> {
         if category.is_none() {
             if let Some(tr) = unsafe { TRANSFORM } {
                 ui.separator();
@@ -323,9 +327,10 @@ impl Tweak for TransformEditTweak {
                 if ui.is_item_hovered() {
                     ui.tooltip_text("These numbers represent the rotation matrix of the component being placed (same as in XML).\nYou can also increment (or hold Alt to decrement) using the Numpad (make sure NumLock is on).\nNumpad 0 resets the matrix.");
                 }
-    
+
                 let mut next = unsafe { (*tr).rotation_mat3i_cur };
                 let mut changed = false;
+
                 #[allow(clippy::identity_op)]
                 for r in 0..3 {
                     ui.set_next_item_width(80.0);
@@ -360,7 +365,7 @@ impl Tweak for TransformEditTweak {
                         (*tr).rotation_mat3f_cur = next.map(|i| i as _);
                     }
                 }
-    
+
                 self.check_orthonormal(&next);
             }
         }
