@@ -2,7 +2,7 @@
 Mod for [Stormworks: Build and Rescue](https://store.steampowered.com/app/573090/Stormworks_Build_and_Rescue/) that adds some QOL settings.<br/>
 Only supports 64 bit Windows version (stormworks64.exe). It might work through wine/proton/etc, but untested.
 
-![image](https://github.com/user-attachments/assets/cdff3e95-1c6f-4c14-9a02-fffd649d425f)
+<img src="https://github.com/user-attachments/assets/cdff3e95-1c6f-4c14-9a02-fffd649d425f" style="width:40%" />
 
 ## READ THIS FIRST
 swQolSuite uses low level techniques (DLL injection + ASM manipulation) to patch the game since there's no other way to do it.<br/>
@@ -10,7 +10,7 @@ Due to the nature of these methods, I won't make any guarantees about stability.
 **If something goes wrong it will most likely crash your game, so please save your work often.**<br/>
 Injecting or ejecting the mod are the most likely to crash, but it might also be possible when changing settings while in use (eg. changing editor settings while in editor)<br/>
 
-**swQolSuite will likely be flagged by your Windows/antiviruses** as a side effect of how it works. The way swQolSuite injects into the game is similar to how some viruses hook other processes, and some antiviruses will detect this.
+**swQolSuite will likely be flagged by your Windows/antiviruses** (`Trojan:Win32/Wacatac.B!ml`) as a side effect of how it works. The way swQolSuite injects into the game is similar to how some viruses hook other processes, and some antiviruses will detect this.
 Obviously I will say this repo (PieKing1215/swQolSuite) and official builds do not actually contain malware to my knowledge, but if you want to be sure, look over the code and [build from source](https://github.com/PieKing1215/swQolSuite/wiki/Building).
 
 swQolSuite is not a cheating/griefing tool, please do not request features that give you an advantage over other players in multiplayer.
