@@ -39,11 +39,10 @@ impl Tweak for ShowHiddenComponents {
             // check for hidden flag
             generate_aob_pattern![
                 0x8b, 0x86, 0xa0, 0x02, 0x00, 0x00, // MOV        EAX,dword ptr [RSI + 0x2a0]
-                0xa9, 0x00, 0x00, 0x00, 0x20,       // TEST       EAX,0x20000000
-                0x0f, 0x87, 0x14, 0x01, 0x00, 0x00  // JA
+                0xa9, 0x00, 0x00, 0x00, 0x20        // TEST       EAX,0x20000000
             ],
-            // NOP the JA
-            vec![0x90; 6],
+            // replace 0x20000000 with 0x00000000 (so it'll always skip the JA after)
+            vec![0x00, 0x00, 0x00, 0x00],
             InjectAt::End,
         ).context("Error finding hidden component check 2 addr")?;
 
