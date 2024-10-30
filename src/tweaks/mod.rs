@@ -96,10 +96,11 @@ pub struct TweakWrapper {
     inner: Box<dyn Tweak + Send + Sync>,
     settings: Vec<Box<dyn SettingUntyped + Send + Sync>>,
     category: Option<String>,
+    title: String,
 }
 
 impl TweakWrapper {
-    pub fn new<T: Tweak + Send + Sync + 'static>(region: &MemoryRegion) -> anyhow::Result<Self> {
+    pub fn new<T: Tweak + TweakConfig + Send + Sync + 'static>(region: &MemoryRegion) -> anyhow::Result<Self> {
         let mut builder = TweakBuilder { region, settings: vec![], category: None };
 
         let tw = T::new(&mut builder)?;
@@ -108,6 +109,7 @@ impl TweakWrapper {
             inner: Box::new(tw),
             settings: builder.settings,
             category: builder.category,
+            title: T::CONFIG_ID.to_owned()
         })
     }
 
@@ -118,6 +120,11 @@ impl TweakWrapper {
     #[must_use]
     pub fn category(&self) -> &Option<String> {
         &self.category
+    }
+
+    #[must_use]
+    pub fn title(&self) -> &str {
+        &self.title
     }
 
     pub fn render(&mut self, ui: &hudhook::imgui::Ui) -> anyhow::Result<()> {

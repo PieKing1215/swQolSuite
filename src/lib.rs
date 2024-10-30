@@ -6,7 +6,7 @@
 pub mod tweaks;
 pub mod types;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use figment::providers::{Format, Toml};
 use figment::Figment;
@@ -68,7 +68,7 @@ struct MainHud {
     simple_version_string: String,
     show: bool,
     tweaks: Vec<(TweakWrapper, &'static str)>,
-    errors: Vec<anyhow::Error>,
+    errors: HashMap<String, Vec<anyhow::Error>>,
 }
 
 impl MainHud {
@@ -83,7 +83,7 @@ impl MainHud {
             simple_version_string,
             show: true,
             tweaks: vec![],
-            errors: vec![],
+            errors: HashMap::new(),
         };
 
         match ProcessInfo::new(Some("stormworks64.exe")) {
@@ -98,11 +98,11 @@ impl MainHud {
                 this.add_tweak::<DevModeTweak>(&process.region);
                 this.add_tweak::<TransformEditTweak>(&process.region);
             },
-            Err(err) => this.errors.push(err),
+            Err(err) => this.errors.entry("Process".to_owned()).or_default().push(err),
         }
 
         if let Err(e) = this.load_config() {
-            this.errors.push(e);
+            this.errors.entry("Config".to_owned()).or_default().push(e);
         }
 
         this
@@ -114,7 +114,7 @@ impl MainHud {
             Ok(tw) => {
                 self.tweaks.push((tw, T::CONFIG_ID));
             },
-            Err(e) => self.errors.push(e),
+            Err(e) => self.errors.entry(T::CONFIG_ID.to_owned()).or_default().push(e),
         }
     }
 
@@ -164,7 +164,7 @@ impl MainHud {
 
         for (mut tw, _) in map {
             if let Err(e) = tw.uninit() {
-                self.errors.push(e);
+                self.errors.entry(tw.title().to_owned()).or_default().push(e);
                 ok = false;
             }
         }
@@ -217,7 +217,7 @@ impl ImguiRenderLoop for MainHud {
 
         for (tw, _) in &mut self.tweaks {
             if let Err(e) = tw.constant_render(ui) {
-                self.errors.push(e);
+                self.errors.entry(tw.title().to_owned()).or_default().push(e);
                 self.show = true;
             }
         }
@@ -262,7 +262,7 @@ impl ImguiRenderLoop for MainHud {
                 if ui.button("Reset to Default") {
                     for (tw, _) in &mut self.tweaks {
                         if let Err(e) = tw.reset_to_default() {
-                            self.errors.push(e);
+                            self.errors.entry(tw.title().to_owned()).or_default().push(e);
                             self.show = true;
                         }
                     }
@@ -271,7 +271,7 @@ impl ImguiRenderLoop for MainHud {
                 if ui.button("Reset to Vanilla") {
                     for (tw, _) in &mut self.tweaks {
                         if let Err(e) = tw.reset_to_vanilla() {
-                            self.errors.push(e);
+                            self.errors.entry(tw.title().to_owned()).or_default().push(e);
                             self.show = true;
                         }
                     }
@@ -279,7 +279,7 @@ impl ImguiRenderLoop for MainHud {
 
                 if ui.button("Load Config") {
                     if let Err(e) = self.load_config() {
-                        self.errors.push(e);
+                        self.errors.entry("Config".to_owned()).or_default().push(e);
                         self.show = true;
                     }
                 };
@@ -287,7 +287,7 @@ impl ImguiRenderLoop for MainHud {
                 let config_hovered = ui.is_item_hovered();
                 if ui.button("Save Config") {
                     if let Err(e) = self.save_config() {
-                        self.errors.push(e);
+                        self.errors.entry("Config".to_owned()).or_default().push(e);
                         self.show = true;
                     }
                 };
@@ -314,14 +314,14 @@ impl ImguiRenderLoop for MainHud {
                     let mut render = || {
                         for i in &mut tweak_indices {
                             if let Err(e) = self.tweaks[*i].0.render(ui) {
-                                self.errors.push(e);
+                                self.errors.entry(self.tweaks[*i].0.title().to_owned()).or_default().push(e);
                                 self.show = true;
                             }
                         }
 
                         for (tw, _) in &mut self.tweaks {
                             if let Err(e) = tw.render_category(ui, category.as_deref()) {
-                                self.errors.push(e);
+                                self.errors.entry(tw.title().to_owned()).or_default().push(e);
                                 self.show = true;
                             }
                         }
@@ -345,8 +345,12 @@ impl ImguiRenderLoop for MainHud {
                 .size([300., 200.], Condition::FirstUseEver)
                 .position([50., 250.], Condition::FirstUseEver)
                 .build(|| {
-                    for err in &self.errors {
-                        ui.text(format!("{err:?}"));
+                    for (title, errs) in &self.errors {
+                        ui.text(format!("{title}:"));
+                        for err in errs {
+                            ui.text(format!("{err:?}"));
+                            ui.separator();
+                        }
                         ui.separator();
                     }
                 });
