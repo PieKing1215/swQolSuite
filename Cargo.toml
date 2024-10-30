@@ -23,8 +23,7 @@ hudhook = { version = "0.7.1", default-features = false, features = ["opengl3", 
 anyhow = "1.0.86"
 memory-rs = "0.2.6"
 atomic_float = "1.0.0"
-# need latest commit, which is not released ("Fix detour not disabling on drop in release mode")
-retour = { git = "https://github.com/Hpmason/retour-rs", rev = "3bab630e234528e848c6c4e0a81656d262224579", features = ["static-detour"] }
+retour = { version = "0.4.0-alpha.3", features = ["static-detour"] }
 num-traits = "0.2"
 itertools = "0.13"
 figment = { version = "0.10", features = ["toml"] }
