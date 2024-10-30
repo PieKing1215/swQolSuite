@@ -149,16 +149,17 @@ impl Tweak for TransformEditTweak {
 
             // vehicle editor destructor
             #[rustfmt::skip]
+            #[allow(unused_parens)]
             let memory_pattern = generate_aob_pattern![
-                0x48, 0x89, 0x5c, 0x24, 0x08, // MOV        qword ptr [RSP + local_res8],RBX
-                0x57,                         // PUSH       RDI
-                0x48, 0x83, 0xec, 0x20,       // SUB        RSP,0x20
-                0x8b, 0xda,                   // MOV        EBX,param_2
-                0x48, 0x8b, 0xf9,             // MOV        RDI,param_1
-                0xe8, _, _, _, _,             // CALL       _
-                0xf6, 0xc3, 0x01,             // TEST       BL,0x1
-                0x74, _,                      // JZ         _
-                0xba, 0xe8, 0x9c, 0x00, 0x00  // MOV        param_2,0x9ce8
+                0x48, 0x89, 0x5c, 0x24, 0x08,         // MOV        qword ptr [RSP + local_res8],RBX
+                0x57,                                 // PUSH       RDI
+                0x48, 0x83, 0xec, 0x20,               // SUB        RSP,0x20
+                0x8b, 0xda,                           // MOV        EBX,param_2
+                0x48, 0x8b, 0xf9,                     // MOV        RDI,param_1
+                0xe8, _, _, _, _,                     // CALL       _
+                0xf6, 0xc3, 0x01,                     // TEST       BL,0x1
+                0x74, _,                              // JZ         _
+                0xba, (0xf0 | 0xe8), 0x9c, 0x00, 0x00 // MOV        param_2,0x9cf0 (0x9ce8 on <1.12.7)
             ];
             let editor_destructor_fn_addr = builder
                 .region

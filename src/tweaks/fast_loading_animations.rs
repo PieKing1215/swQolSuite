@@ -3,7 +3,7 @@ use std::arch::asm;
 use anyhow::Context;
 use memory_rs::generate_aob_pattern;
 
-use super::{Defaults, InjectAt, Tweak, TweakConfig};
+use super::{Defaults, InjectAt, ScanAOBSingleError, Tweak, TweakConfig};
 
 const FAST_MENU_FADE_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
 const SKIP_LOAD_FINISH_DEFAULTS: Defaults<bool> = Defaults::new(true, false);
@@ -29,10 +29,21 @@ impl Tweak for FastLoadingAnimationsTweak {
         // menu_state.fade_cur++;
         // ```
         #[rustfmt::skip]
+        let memory_pattern_1_12_6 = generate_aob_pattern![
+            0x49, 0x8B, 0xD4,                        // MOV    RDX,R12 (unimportant)
+            0xff, 0x90, 0xf0, 0x00, 0x00, 0x00,      // CALL   qword ptr [RAX + 0xf0] (unimportant)
+            0x41, 0xff, 0x86, 0x80, 0xdb, 0x0b, 0x00 // INC    dword ptr [R14 + 0xbdb80] // <====== ! different on 1.12.6 vs 1.12.7
+        ];
+
+        // ```
+        // ... // some junk because I need more space to inject
+        // menu_state.fade_cur++;
+        // ```
+        #[rustfmt::skip]
         let memory_pattern = generate_aob_pattern![
             0x49, 0x8B, 0xD4,                        // MOV    RDX,R12 (unimportant)
             0xff, 0x90, 0xf0, 0x00, 0x00, 0x00,      // CALL   qword ptr [RAX + 0xf0] (unimportant)
-            0x41, 0xff, 0x86, 0x80, 0xdb, 0x0b, 0x00 // INC    dword ptr [R14 + 0xbdb80]
+            0x41, 0xff, 0x87, 0x90, 0xdb, 0x0b, 0x00 // INC    dword ptr [R15 + 0xbdb90] // <====== ! different on 1.12.6 vs 1.12.7
         ];
 
         let menu_fade_injection = builder
@@ -48,6 +59,26 @@ impl Tweak for FastLoadingAnimationsTweak {
                 },
                 InjectAt::Start,
             )
+            .or_else(|e| {
+                if let Some(ScanAOBSingleError::NoMatches) = e.downcast_ref::<ScanAOBSingleError>() {
+                    // fallback for 1.12.6
+                    builder
+                        .injection(
+                            &memory_pattern_1_12_6,
+                            {
+                                // CALL custom_fade
+                                let mut inject = vec![0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0xeb, 0x08];
+                                inject.extend_from_slice(&(custom_fade_1_12_6 as usize).to_le_bytes());
+                                // pad with NOP
+                                inject.resize(memory_pattern_1_12_6.size, 0x90);
+                                inject
+                            },
+                            InjectAt::Start,
+                        ).context("(1.12.6 fallback)")
+                } else {
+                    Err(e).context("(no fallback)")
+                }
+            })
             .context("Error finding menu fade addr")?;
 
         builder
@@ -84,12 +115,24 @@ impl Tweak for FastLoadingAnimationsTweak {
 }
 
 #[no_mangle]
-extern "stdcall" fn custom_fade() {
+extern "stdcall" fn custom_fade_1_12_6() {
     unsafe {
         asm!(
             "mov rdx,r12",                      // original code
             "call [rax + 0xf0]",                // original code
             "add dword ptr [r14 + 0xbdb80],15", // inc by 15 instead of 1
+            options(nostack),
+        );
+    }
+}
+
+#[no_mangle]
+extern "stdcall" fn custom_fade() {
+    unsafe {
+        asm!(
+            "mov rdx,r12",                      // original code
+            "call [rax + 0xf0]",                // original code
+            "add dword ptr [r15 + 0xbdb90],15", // inc by 15 instead of 1
             options(nostack),
         );
     }

@@ -112,18 +112,19 @@ impl Tweak for MultithreadedLoadingTweak {
             }
 
             #[rustfmt::skip]
+            #[allow(unused_parens)]
             let load_save_fn_addr = builder.region.scan_aob_single(&generate_aob_pattern![
-                _, 0x89, 0x5c, _, 0x18,                  // MOV        qword ptr [RSP + 0x18],RBX
-                _, 0x89, 0x54, _, 0x10,                  // MOV        qword ptr [RSP + 0x10],RDX
-                _,                                       // PUSH       _
-                _,                                       // PUSH       _
-                _,                                       // PUSH       _
-                _, _,                                    // PUSH       _
-                _, _,                                    // PUSH       _
-                _, _,                                    // PUSH       _
-                _, _,                                    // PUSH       _
-                _, 0x8d, 0x6c, _, 0xe1,                  // LEA        RBP,[RSP + -0x1f]
-                0x48, 0x81, 0xec, 0xd0, 0x00, 0x00, 0x00 // SUB        RSP,0xd0
+                _, 0x89, 0x5c, _, 0x18,                           // MOV        qword ptr [RSP + 0x18],RBX
+                _, 0x89, 0x54, _, 0x10,                           // MOV        qword ptr [RSP + 0x10],RDX
+                _,                                                // PUSH       _
+                _,                                                // PUSH       _
+                _,                                                // PUSH       _
+                _, _,                                             // PUSH       _
+                _, _,                                             // PUSH       _
+                _, _,                                             // PUSH       _
+                _, _,                                             // PUSH       _
+                _, 0x8d, 0x6c, _, 0xe1,                           // LEA        RBP,[RSP + -0x1f]
+                0x48, 0x81, 0xec, (0xa0 | 0xd0), 0x00, 0x00, 0x00 // SUB        RSP,0xa0 (0xd0 on <1.12.7)
             ]).context("Error finding load_save fn addr")?;
 
             let det = GenericDetour::new(

@@ -70,6 +70,12 @@ pub enum ScanAOBSingleError {
     MultipleMatches,
 }
 
+impl std::fmt::Display for ScanAOBSingleError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        std::fmt::Debug::fmt(&self, f)
+    }
+}
+
 pub trait MemoryRegionExt {
     fn scan_aob_single(
         &self,
@@ -85,9 +91,9 @@ impl MemoryRegionExt for MemoryRegion {
         let matches = self.scan_aob_all_matches(pat)?;
 
         match matches.len() {
-            0 => anyhow::bail!("No Matches"),
+            0 => anyhow::bail!(ScanAOBSingleError::NoMatches),
             1 => Ok(matches[0]),
-            _ => anyhow::bail!("Multiple Matches"),
+            _ => anyhow::bail!(ScanAOBSingleError::MultipleMatches),
         }
     }
 }
